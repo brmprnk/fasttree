@@ -1,3 +1,11 @@
+# Group 4 Project specific ignores
+
+# Files
+.DS_Store
+
+# Folders
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
