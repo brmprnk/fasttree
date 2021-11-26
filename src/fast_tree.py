@@ -34,12 +34,30 @@ def fast_tree(sequences) -> str:
     print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance2)) 
 
 
-# Calculate Profile of internal nodes
-def Profile(internalNodes):
+
+def Profile(internalNodes: str) -> list: 
+    """Calculate Profile of internal nodes
+    
+    Args:
+        internalNodes (str): The sequences of internal nodes
+
+    Returns:
+        (list): the profile matrix containing ratios 
+    """
     columns = [''.join(seq) for seq in zip(*internalNodes)]
     return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
 
-def uncorrectedDistance(profile): #i.e. the fraction of positions that differ aka #difference/sequence length by using profiles
+def uncorrectedDistance(profile: list) -> float: 
+    """Calculate uncorrected distance
+    
+    The fraction of position that differ by using profiles. It's also #differences/sequence length
+
+    Args:
+        profile (list): The profile matrix of sequences of internal nodes containing ratios
+
+    Returns:
+        (float): the distance between internal nodes
+    """
     k = len(profile)
     differ = 0
     for i in range(k):
@@ -48,7 +66,21 @@ def uncorrectedDistance(profile): #i.e. the fraction of positions that differ ak
     fraction = differ / k                 
     return fraction
 
-def makeCombisofChildren(children): #make combinations to calculate the hamming distance between children
+"""Following 25 rules do the same as uncorrectedDistance but uses sequences of nodes as input and returns list of distances
+
+    """
+def makeCombisofChildren(children: list) -> list: 
+    """Make combinations of all children
+    
+    The fraction of position that differ by using profiles. It's also #differences/sequence length
+
+    Args:
+        children (list): 
+
+    Returns:
+        (list):
+    """
+    #make combinations to calculate the hamming distance between children
     combi = []
     for i, v1 in enumerate(children):
         for j in range(i+1, len(children)):
