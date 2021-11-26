@@ -22,6 +22,17 @@ def fast_tree(sequences) -> str:
     print("The sequences entered into the program : ")
     pprint.pprint(sequences)
 
+    # Actual first step : Unique sequences ( page 1646, do later )
+
+    # Step 1 of algorithm : Create total profile T
+    all_sequences = list(sequences.values())
+    T = Profile(all_sequences)
+
+    # Step 2 : Top hits sequence
+    # Skip for now
+
+    # Step 3 : Create initial topology
+
     # calculate Profile for internal nodes
     Hypothetical_internal_node = [sequences['2'] , sequences['4'], sequences['5']]
     Node_profile = Profile(Hypothetical_internal_node)
@@ -29,9 +40,9 @@ def fast_tree(sequences) -> str:
 
     combi = makeCombisofChildren(Hypothetical_internal_node)
     Sequence_distance2 = SequenceDistance(combi, len(sequences['2']))  #calculates list of all combi's of children
-    print('Profile between 2 and 4 is: ' + str(Node_profile))
-    print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance))
-    print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance2)) 
+    # print('Profile between 2 and 4 is: ' + str(Node_profile))
+    # print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance))
+    # print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance2)) 
 
 
 # Calculate Profile of internal nodes
@@ -92,12 +103,15 @@ def JC_distance(d_u: float) -> float:
     # FastTree's max distance
     max_distance = 3.0
 
-    # Calculate Jukes-Cantor distance (d in paper)
-    # What log should we use?
-    jd_d = -0.75 * math.log(1 - (4/3) * d_u, math.e)
-
     # Distances are truncated to 3 substitutions per site
-    # Does that mean if d_u >= 0.75 then jd_d = 3.0?
+    # if d_u is 3/4 or larger then the log of a negative value will be calculated, instead return max_dist
+    if d_u >= 0.75:
+        return max_distance
+
+    # Calculate Jukes-Cantor distance (d in paper)
+    # Paper mentions log, literature uses ln.
+    # Therefore we also use log base 10
+    jd_d = -0.75 * math.log(1 - (4/3) * d_u)
 
     # For sequences that do not overlap, FastTree uses a max distance of 3.0
     if jd_d > max_distance:
