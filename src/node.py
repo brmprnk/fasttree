@@ -1,6 +1,3 @@
-from fast_tree import Profile
-
-
 class Node:
 
     def __init__(self, name, sequence):
