@@ -83,15 +83,14 @@ def uncorrectedDistance(profile: list) -> float:
 def makeCombisofChildren(children: list) -> list: 
     """Make combinations of all children
     
-    The fraction of position that differ by using profiles. It's also #differences/sequence length
+    put combinations of 2 sequences of all nodes in list. 
 
     Args:
-        children (list): 
+        children (list): sequences of all nodes
 
     Returns:
-        (list):
+        (list): combinations of all sequences
     """
-    #make combinations to calculate the hamming distance between children
     combi = []
     for i, v1 in enumerate(children):
         for j in range(i+1, len(children)):
@@ -99,7 +98,15 @@ def makeCombisofChildren(children: list) -> list:
     return combi
 
 
-def HammingDistance(combi): #calculate hamming distance between combinations of children
+def HammingDistance(combi: list) -> list: 
+    """Calculate hamming distance between 2 nodes
+    
+    Args:
+        combi (list): list with combinations of all nodes 
+
+    Returns:
+        hamming distance (list): hamming distances of all input nodes
+    """
     distance = []
     for j in range(len(combi)):
         hammingdistance = 0
@@ -109,7 +116,16 @@ def HammingDistance(combi): #calculate hamming distance between combinations of 
         distance.append(hammingdistance)
     return distance
 
-def SequenceDistance(combi, k): #ratio of #difference/sequence length by using hamming distance
+def SequenceDistance(combi: list, k: int) -> list: #ratio of #difference/sequence length by using hamming distance
+    """calculate the sequence distance between combinations of all sequences
+    
+    Args:
+        combi (list): list with combinations of all nodes 
+        k (int): length of 1 sequence
+
+    Returns:
+        SequenceDistance (list): ratio of hamming distance/sequence length for each combination
+    """
     ham = HammingDistance(combi)
     seqDis = []
     for i in range(len(ham)):
