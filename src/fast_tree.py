@@ -2,12 +2,12 @@
 Maybe some comments about implementation here.
 
 References to page numbers in this code are referring to the paper:
-[1] [1] Price at al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
+[1] Price at al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
     Molecular Biology and Evolution, vol 26 (7). 2009.
     Paper can be found on https://pubmed.ncbi.nlm.nih.gov/19377059/
 """
 import math
-import pprint  # For pretty printing (Replace with own code before submission)
+import pprint as pp # For pretty printing (Replace with own code before submission)
 
 def fast_tree(sequences) -> str:
     """FastTree Algorithm.
@@ -18,9 +18,20 @@ def fast_tree(sequences) -> str:
     Returns:
         (str): A phylogenetic tree in Newick format.
     """
-
     print("The sequences entered into the program : ")
-    pprint.pprint(sequences)
+    pp.pprint(sequences)
+
+    # Actual first step : Unique sequences ( page 1646, do later )
+
+    # Step 1 of algorithm : Create total profile T
+    all_sequences = list(sequences.values())
+    T = Profile(all_sequences)
+    pp.pprint(T)
+
+    # Step 2 : Top hits sequence
+    # Skip for now
+
+    # Step 3 : Create initial topology
 
     # calculate Profile for internal nodes
     Hypothetical_internal_node = [sequences['2'] , sequences['4'], sequences['5']]
@@ -29,9 +40,9 @@ def fast_tree(sequences) -> str:
 
     combi = makeCombisofChildren(Hypothetical_internal_node)
     Sequence_distance2 = SequenceDistance(combi, len(sequences['2']))  #calculates list of all combi's of children
-    print('Profile between 2 and 4 is: ' + str(Node_profile))
-    print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance))
-    print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance2)) 
+    # print('Profile between 2 and 4 is: ' + str(Node_profile))
+    # print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance))
+    # print('Their sequence distance (uncorrected distance) is: ' + str(Sequence_distance2)) 
 
 
 
@@ -62,8 +73,8 @@ def uncorrectedDistance(profile: list) -> float:
     differ = 0
     for i in range(k):
         if 1.0 not in profile[i]:
-            differ += 1 
-    fraction = differ / k                 
+            differ += 1
+    fraction = differ / k
     return fraction
 
 """Following 25 rules do the same as uncorrectedDistance but uses sequences of nodes as input and returns list of distances
@@ -90,7 +101,7 @@ def makeCombisofChildren(children: list) -> list:
 
 def HammingDistance(combi): #calculate hamming distance between combinations of children
     distance = []
-    for j in range(len(combi)):    
+    for j in range(len(combi)):
         hammingdistance = 0
         for i in range(len(combi[0][0])):
             if combi[j][0][i] != combi[j][1][i]:
@@ -105,18 +116,22 @@ def SequenceDistance(combi, k): #ratio of #difference/sequence length by using h
         seqDis.append(ham[i]/int(k))
     return seqDis
 
+def out_distance(i, nodes):
+    """
+    """
+
 def JC_distance(d_u: float) -> float:
     """Compute Jukes-Cantor distance of FastTree's uncorrected distance
 
     Defined on page 1643 as d = -(3/4)log(1 - (4/3)d_u).
 
     Important note: Page 1643-1644
-    "For both nucleotide and protein sequences, 
-     FastTree truncates the corrected distances to a maximum of 3.0 substitutions per site, 
+    "For both nucleotide and protein sequences,
+     FastTree truncates the corrected distances to a maximum of 3.0 substitutions per site,
      and for sequences that do not overlap because of gaps, FastTree uses this maximum distance."
     
     Args:
-        d_u (float): FastTree's uncorrected distancgie, the fraction of positions that differ between sequences.
+        d_u (float): FastTree's uncorrected distance, the fraction of positions that differ between sequences.
 
     Returns:
         (float): Jukes-Cantor distance.
@@ -124,12 +139,15 @@ def JC_distance(d_u: float) -> float:
     # FastTree's max distance
     max_distance = 3.0
 
-    # Calculate Jukes-Cantor distance (d in paper)
-    # What log should we use?
-    jd_d = -0.75 * math.log(1 - (4/3) * d_u, math.e)
-
     # Distances are truncated to 3 substitutions per site
-    # Does that mean if d_u >= 0.75 then jd_d = 3.0?
+    # if d_u is 3/4 or larger then the log of a negative value will be calculated, instead return max_dist
+    if d_u >= 0.75:
+        return max_distance
+
+    # Calculate Jukes-Cantor distance (d in paper)
+    # Paper mentions log, literature uses ln.
+    # Therefore we also use log base 10
+    jd_d = -0.75 * math.log(1 - (4/3) * d_u)
 
     # For sequences that do not overlap, FastTree uses a max distance of 3.0
     if jd_d > max_distance:

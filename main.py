@@ -56,7 +56,7 @@ def main() -> None:
     fast_tree(sequences)
 
 
-def readinput(filepath):
+def readinput(filepath: str) -> dict:
     """Processes .aln file into a mapping.
 
     Reads in a file whose path was provided in the program's arguments.
