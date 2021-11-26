@@ -2,12 +2,12 @@
 Maybe some comments about implementation here.
 
 References to page numbers in this code are referring to the paper:
-[1] [1] Price at al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
+[1] Price at al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
     Molecular Biology and Evolution, vol 26 (7). 2009.
     Paper can be found on https://pubmed.ncbi.nlm.nih.gov/19377059/
 """
 import math
-import pprint  # For pretty printing (Replace with own code before submission)
+import pprint as pp # For pretty printing (Replace with own code before submission)
 
 def fast_tree(sequences) -> str:
     """FastTree Algorithm.
@@ -18,15 +18,15 @@ def fast_tree(sequences) -> str:
     Returns:
         (str): A phylogenetic tree in Newick format.
     """
-
     print("The sequences entered into the program : ")
-    pprint.pprint(sequences)
+    pp.pprint(sequences)
 
     # Actual first step : Unique sequences ( page 1646, do later )
 
     # Step 1 of algorithm : Create total profile T
     all_sequences = list(sequences.values())
     T = Profile(all_sequences)
+    pp.pprint(T)
 
     # Step 2 : Top hits sequence
     # Skip for now
@@ -55,8 +55,8 @@ def uncorrectedDistance(profile): #i.e. the fraction of positions that differ ak
     differ = 0
     for i in range(k):
         if 1.0 not in profile[i]:
-            differ += 1 
-    fraction = differ / k                 
+            differ += 1
+    fraction = differ / k
     return fraction
 
 def makeCombisofChildren(children): #make combinations to calculate the hamming distance between children
@@ -69,7 +69,7 @@ def makeCombisofChildren(children): #make combinations to calculate the hamming 
 
 def HammingDistance(combi): #calculate hamming distance between combinations of children
     distance = []
-    for j in range(len(combi)):    
+    for j in range(len(combi)):
         hammingdistance = 0
         for i in range(len(combi[0][0])):
             if combi[j][0][i] != combi[j][1][i]:
@@ -84,18 +84,22 @@ def SequenceDistance(combi, k): #ratio of #difference/sequence length by using h
         seqDis.append(ham[i]/int(k))
     return seqDis
 
+def out_distance(i, nodes):
+    """
+    """
+
 def JC_distance(d_u: float) -> float:
     """Compute Jukes-Cantor distance of FastTree's uncorrected distance
 
     Defined on page 1643 as d = -(3/4)log(1 - (4/3)d_u).
 
     Important note: Page 1643-1644
-    "For both nucleotide and protein sequences, 
-     FastTree truncates the corrected distances to a maximum of 3.0 substitutions per site, 
+    "For both nucleotide and protein sequences,
+     FastTree truncates the corrected distances to a maximum of 3.0 substitutions per site,
      and for sequences that do not overlap because of gaps, FastTree uses this maximum distance."
     
     Args:
-        d_u (float): FastTree's uncorrected distancgie, the fraction of positions that differ between sequences.
+        d_u (float): FastTree's uncorrected distance, the fraction of positions that differ between sequences.
 
     Returns:
         (float): Jukes-Cantor distance.
