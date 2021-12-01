@@ -1,13 +1,15 @@
 class Node:
 
-    def __init__(self, name, sequence):
+    def __init__(self, name, index, sequence):
         self.name = name
         self.sequence = sequence
         self.branchlength = 0
         self.leftchild = None
         self.rightchild = None
         self.active = True
-        self.profile = self.create_profile(sequence)
+        self.index = index
+        if sequence != 'nosequence':
+            self.profile = self.create_profile(sequence)
 
     def create_profile(self, sequence):
         profile = []
@@ -18,6 +20,18 @@ class Node:
             column[nt_values[nt]] = 1.0
             profile.append(column)
         return profile
+
+    def set_inactive(self):
+        self.active = False
+class Node1:
+
+    def __init__(self, name):
+        self.name = name
+        self.branchlength = 0
+        self.leftchild = None
+        self.rightchild = None
+        self.active = True
+        self.profile = []
 
     def set_inactive(self):
         self.active = False

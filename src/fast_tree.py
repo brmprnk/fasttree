@@ -11,6 +11,7 @@ import pprint as pp # For pretty printing (Replace with own code before submissi
 import sys
 
 from src.node import Node
+from src.node import Node1
 
 def fast_tree(sequences) -> str:
     """FastTree Algorithm.
@@ -24,33 +25,34 @@ def fast_tree(sequences) -> str:
     print("The sequences entered into the program : ")
     pp.pprint(sequences)
     nodes = []
+    i = 0
     for seq in sequences.keys():
-        node = Node(seq, sequences[seq])
+        node = Node(seq, i, sequences[seq])
+        i +=1
         nodes.append(node)
 
     # Actual first step : Unique sequences ( page 1646, do later )
 
     # Step 1 of algorithm : Create total profile T
     T = Profile(nodes)
-    print("Total profile T")
-    pp.pprint(T)
+    # print("Total profile T")
+    # pp.pprint(T)
 
     # Step 2 : Top hits sequence
     # Skip for now
 
     # Step 3 : Create initial topology
-    minimized_join = minimize_nj_criterion(nodes)
-
-
+    CreateInitialTopology(nodes)     
+  
+def Profile(nodes: list) -> list:
     """Calculate Profile of internal nodes
     
-        internalNodes (str): The sequences of internal nodes
+        internalNodes (list): The sequences of internal nodes
     Args:
 
     Returns:
-        (list): the profile matrix containing ratios 
+        Profile (list): the profile matrix containing ratios 
     """
-def Profile(nodes):
     sequences = []
     for node in nodes:
         sequences.append(node.sequence)
@@ -96,8 +98,6 @@ def makeCombisofChildren(children: list) -> list:
             combi.append( [v1, children[j]])
     return combi
 
-<<<<<<< HEAD
-
 def HammingDistance(combi: list) -> list: 
     """Calculate hamming distance between 2 nodes
     
@@ -107,9 +107,6 @@ def HammingDistance(combi: list) -> list:
     Returns:
         hamming distance (list): hamming distances of all input nodes
     """
-=======
-def HammingDistance(combi): #calculate hamming distance between combinations of children
->>>>>>> 354cbd26ad6264d920257b7c6be0dcb079ad2661
     distance = []
     for j in range(len(combi)):
         hammingdistance = 0
@@ -119,7 +116,7 @@ def HammingDistance(combi): #calculate hamming distance between combinations of 
         distance.append(hammingdistance)
     return distance
 
-def SequenceDistance(combi: list, k: int) -> list: #ratio of #difference/sequence length by using hamming distance
+def SequenceDistance(combi: list, k: int) -> list: 
     """calculate the sequence distance between combinations of all sequences
     
     Args:
@@ -163,28 +160,48 @@ def out_distance(i, nodes):
     # print("Out distance r({}) = ".format(i.name), r)
     return r
 
-def minimize_nj_criterion(nodes):
-    """Returns i,j for which d(i, j) - r(i) -r(j) is minimal
+def minimize_nj_criterion(nodes, index):
+    """Returns i,j for which d(i, j) - r(i) -r(j) is minimal and corresponding new node of merging i,j
     """
     active_nodes = []
     for node in nodes:
         if node.active:
             active_nodes.append(node)
-
+    
     min_dist = sys.float_info.max
     best_join = (0, 0)
     for i  in active_nodes:
         for j in active_nodes:
             if i == j:
                 continue
-            criterion = uncorrectedDistance(Profile([i, j])) - out_distance(i, nodes) - out_distance(j, nodes)
-            if criterion < min_dist:
+            temp_profile_new_node = Profile([i, j]) #calculates profile of potential merge
+            criterion = uncorrectedDistance(temp_profile_new_node) - out_distance(i, nodes) - out_distance(j, nodes)
+            if criterion < min_dist: #if best join for now
+                profile_new_node = temp_profile_new_node #sets profile of new node to profile of best join
                 min_dist = criterion
-                best_join = (i, j)
+                best_join = (i, j) #saves best joining nodes
+
+
+    #save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
+    #we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
+    new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), int(index), 'nosequence') 
+    new_node.profile = profile_new_node
+    new_node.active = True
     
     print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
+    return best_join, new_node
 
-    return best_join
+def CreateInitialTopology(nodes):
+    for i in range(len(nodes)-1):
+        minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
+        # make joined nodes inactive
+        nodes[int(minimized_join[1].index)].active = False
+        nodes[int(minimized_join[0].index)].active = False
+        # append the newly joined node to list of nodes
+        nodes.append(new_node)
+        
+        print("Merged nodes to: " + new_node.name)
+        # I don't know what to return and save so heelpppp
 
 def JC_distance(d_u: float) -> float:
     """Compute Jukes-Cantor distance of FastTree's uncorrected distance
