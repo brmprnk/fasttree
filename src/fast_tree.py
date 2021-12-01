@@ -187,7 +187,9 @@ def minimize_nj_criterion(nodes, index):
     new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), int(index), 'nosequence') 
     new_node.profile = profile_new_node
     new_node.active = True
-    
+    #add indices of left child, right child 
+    new_node.leftchild = best_join[0].index
+    new_node.rightchild = best_join[1].index
     print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
     return best_join, new_node
 
@@ -200,7 +202,11 @@ def CreateInitialTopology(nodes):
         # append the newly joined node to list of nodes
         nodes.append(new_node)
         
+        
+        
         print("Merged nodes to: " + new_node.name)
+        print("left child: " + str(nodes[len(nodes)-1].leftchild))
+        print("right child: " + str(nodes[len(nodes)-1].rightchild))
         # I don't know what to return and save so heelpppp
 
 def JC_distance(d_u: float) -> float:
