@@ -11,7 +11,6 @@ import pprint as pp # For pretty printing (Replace with own code before submissi
 import sys
 
 from src.node import Node
-from src.node import Node1
 
 def fast_tree(sequences) -> str:
     """FastTree Algorithm.
@@ -194,7 +193,7 @@ def minimize_nj_criterion(nodes, index):
     return best_join, new_node
 
 def CreateInitialTopology(nodes):
-    for i in range(len(nodes)-1):
+    for _ in range(len(nodes)-1):
         minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
         # make joined nodes inactive
         nodes[int(minimized_join[1].index)].active = False
