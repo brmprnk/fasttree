@@ -47,7 +47,7 @@ def fast_tree(sequences) -> str:
     PrintNewick(nodes)
 
 
-  
+
 def Profile(nodes: list) -> list:
     """Calculate Profile of internal nodes
     
@@ -63,7 +63,7 @@ def Profile(nodes: list) -> list:
     columns = [''.join(seq) for seq in zip(*sequences)]
     return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
 
-def uncorrectedDistance(profile: list) -> float: 
+def uncorrectedDistance(profile: list) -> float:
     """Calculate uncorrected distance
     
     The fraction of position that differ by using profiles. It's also #differences/sequence length
@@ -85,7 +85,7 @@ def uncorrectedDistance(profile: list) -> float:
 """Following 25 rules do the same as uncorrectedDistance but uses sequences of nodes as input and returns list of distances
 
     """
-def makeCombisofChildren(children: list) -> list: 
+def makeCombisofChildren(children: list) -> list:
     """Make combinations of all children
     
     put combinations of 2 sequences of all nodes in list. 
@@ -102,7 +102,7 @@ def makeCombisofChildren(children: list) -> list:
             combi.append( [v1, children[j]])
     return combi
 
-def HammingDistance(combi: list) -> list: 
+def HammingDistance(combi: list) -> list:
     """Calculate hamming distance between 2 nodes
     
     Args:
@@ -120,7 +120,7 @@ def HammingDistance(combi: list) -> list:
         distance.append(hammingdistance)
     return distance
 
-def SequenceDistance(combi: list, k: int) -> list: 
+def SequenceDistance(combi: list, k: int) -> list:
     """calculate the sequence distance between combinations of all sequences
     
     Args:
@@ -171,7 +171,7 @@ def minimize_nj_criterion(nodes, index):
     for node in nodes:
         if node.active:
             active_nodes.append(node)
-    
+
     min_dist = sys.float_info.max
     best_join = (0, 0)
     for i  in active_nodes:
@@ -188,10 +188,10 @@ def minimize_nj_criterion(nodes, index):
 
     #save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
     #we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
-    new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), int(index), 'nosequence') 
+    new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), int(index), 'nosequence')
     new_node.profile = profile_new_node
     new_node.active = True
-    #add indices of left child, right child 
+    #add indices of left child, right child
     new_node.leftchild = best_join[0].index
     new_node.rightchild = best_join[1].index
     print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
@@ -205,9 +205,9 @@ def CreateInitialTopology(nodes):
         nodes[int(minimized_join[0].index)].active = False
         # append the newly joined node to list of nodes
         nodes.append(new_node)
-        
-        
-        
+
+
+
         print("Merged nodes to: " + new_node.name)
         print("left child: " + str(nodes[len(nodes)-1].leftchild))
         print("right child: " + str(nodes[len(nodes)-1].rightchild))
@@ -245,7 +245,7 @@ def JC_distance(d_u: float) -> float:
     # For sequences that do not overlap, FastTree uses a max distance of 3.0
     if jd_d > max_distance:
         return max_distance
-    
+
     return jd_d
 
 
@@ -254,6 +254,12 @@ def PrintNewick(nodes: list):
         Uses the left and right child of each node as structure.
         Assumes that the internal (merged) nodes are added to the nodes list in order of merging and that the children saved as indices.
 
+        The Newick list will initially contain the index of each node.
+        Cycle through all nodes from last added to the first to build the structure.
+        The index of internal nodes (= has children) will be replaced by the index of their children.
+        The index of leaf nodes (= has no children) will be replaces by the name of the leaf node.
+        This results in a list with all the names of the nodes with the right hierarchy of brackets.
+
     Args:
         nodes (list): all nodes in the tree, including internal (merged) nodes
 
@@ -261,15 +267,11 @@ def PrintNewick(nodes: list):
         Newick string (str): the desired format of the tree structure
     """
 
-    # The Newick list will initially contain the index of each node
-    # The index of internal nodes (= has children) will be replaced by the index of their children
-    # The index of leaf nodes (= has no children) will be replaces by the name of the leaf node
-
     # Initiate newick list for the root node (last added node to the list)
     newick_list = ['(', nodes[-1].leftchild, ',', nodes[-1].rightchild, ')']
     # print('Initial newick list', newick_list)
 
-    # Cycle through all nodes from last added to the first to build the structure
+    # Update newick list for each node
     for node in reversed(nodes[:-1]):
         # print('search for', node.index)
         replace = newick_list.index(node.index) # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
