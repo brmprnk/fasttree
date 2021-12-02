@@ -23,15 +23,3 @@ class Node:
 
     def set_inactive(self):
         self.active = False
-class Node1:
-
-    def __init__(self, name):
-        self.name = name
-        self.branchlength = 0
-        self.leftchild = None
-        self.rightchild = None
-        self.active = True
-        self.profile = []
-
-    def set_inactive(self):
-        self.active = False
