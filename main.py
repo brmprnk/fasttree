@@ -55,7 +55,6 @@ def main() -> None:
     # Run FastTree
     fast_tree(sequences)
 
-
 def readinput(filepath: str) -> dict:
     """Processes .aln file into a mapping.
 

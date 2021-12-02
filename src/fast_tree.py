@@ -41,7 +41,12 @@ def fast_tree(sequences) -> str:
     # Skip for now
 
     # Step 3 : Create initial topology
-    CreateInitialTopology(nodes)     
+    CreateInitialTopology(nodes)
+
+    # Final step: print tree topology as Newick string
+    PrintNewick(nodes)
+
+
   
 def Profile(nodes: list) -> list:
     """Calculate Profile of internal nodes
@@ -193,7 +198,7 @@ def minimize_nj_criterion(nodes, index):
     return best_join, new_node
 
 def CreateInitialTopology(nodes):
-    for _ in range(len(nodes)-1):
+    for i in range(len(nodes)-1):
         minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
         # make joined nodes inactive
         nodes[int(minimized_join[1].index)].active = False
@@ -242,3 +247,43 @@ def JC_distance(d_u: float) -> float:
         return max_distance
     
     return jd_d
+
+
+def PrintNewick(nodes: list):
+    """ Generates a Newick string based on the list of nodes.
+        Uses the left and right child of each node as structure.
+        Assumes that the internal (merged) nodes are added to the nodes list in order of merging and that the children saved as indices.
+
+    Args:
+        nodes (list): all nodes in the tree, including internal (merged) nodes
+
+    Returns:
+        Newick string (str): the desired format of the tree structure
+    """
+
+    # The Newick list will initially contain the index of each node
+    # The index of internal nodes (= has children) will be replaced by the index of their children
+    # The index of leaf nodes (= has no children) will be replaces by the name of the leaf node
+
+    # Initiate newick list for the root node (last added node to the list)
+    newick_list = ['(', nodes[-1].leftchild, ',', nodes[-1].rightchild, ')']
+    # print('Initial newick list', newick_list)
+
+    # Cycle through all nodes from last added to the first to build the structure
+    for node in reversed(nodes[:-1]):
+        # print('search for', node.index)
+        replace = newick_list.index(node.index) # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
+
+        # Check if node has children
+        if node.leftchild is None:              # Right node not checked as it always has zero or two children
+            newick_list[replace] = node.name    # Replace node index by it's name (this is a leaf node)
+        else:
+            newick_list[replace:replace+1] = ('(', node.leftchild, ',', node.rightchild, ')')   # Replace node index by the index of it's children
+        # print('newick list at end of iteration', newick_list)
+
+    # print('Newick list', newick_list)
+
+    newick_str =  "".join(newick_list)
+    print('\nNewick string:', newick_str)
+
+
