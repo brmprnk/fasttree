@@ -11,6 +11,7 @@ import pprint as pp # For pretty printing (Replace with own code before submissi
 import sys
 
 from src.node import Node
+# from src.NNI import NNI
 
 def fast_tree(sequences) -> str:
     """FastTree Algorithm.
@@ -27,6 +28,7 @@ def fast_tree(sequences) -> str:
     i = 0
     for seq in sequences.keys():
         node = Node(seq, i, sequences[seq])
+        node.leaf = True
         i +=1
         nodes.append(node)
 
@@ -42,6 +44,9 @@ def fast_tree(sequences) -> str:
 
     # Step 3 : Create initial topology
     CreateInitialTopology(nodes)
+
+    # Step 4 : Nearest Neighbor Interchanges
+    NNI(nodes)
     
     # Final step: print tree topology as Newick string
     PrintNewick(nodes)
@@ -83,14 +88,16 @@ def uncorrectedDistance(profile: list) -> float:
     # print(differ)
     return fraction
 
+
 def uncorDistance(profiles: list) -> float:
     differ = 0
     length = len(profiles[1])
     for k in range(length):
-
+        print(profiles[0][k], profiles[1][k][:])
         if profiles[0][k][:] != profiles[1][k][:]:
-            
             differ += 1
+
+    print(len(profiles[1]), differ)
     fraction = differ / length
     return fraction
 
@@ -156,7 +163,7 @@ def out_distance(i, nodes):
     """
     active_nodes = 1  # i is always an active node
     dist_to_others = 0
-    dist_to_others2 = 0
+
     for j in nodes:
         if j.name == i:
             continue
@@ -168,9 +175,7 @@ def out_distance(i, nodes):
         profile_i_j = Profile([i, j])
 
         dist_to_others += uncorrectedDistance(profile_i_j)
-        print(profile_i_j)
-        dist_to_others2 += uncorDistance([profile_i_j])
-    print(dist_to_others-dist_to_others2)
+
     # Don't divide by 0
     if active_nodes == 2:
         return dist_to_others
@@ -209,6 +214,9 @@ def minimize_nj_criterion(nodes, index):
     #add indices of left child, right child
     new_node.leftchild = best_join[0].index
     new_node.rightchild = best_join[1].index
+    nodes[best_join[0].index].parent = new_node.index
+    nodes[best_join[1].index].parent = new_node.index
+
     # print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
     return best_join, new_node
 
@@ -221,7 +229,7 @@ def CreateInitialTopology(nodes):
         nodes[int(minimized_join[1].index)].active = False
         nodes[int(minimized_join[0].index)].active = False
         # append the newly joined node to list of nodes 
-        BrachLength(minimized_join, numberLeaf, nodes, new_node)
+        # BranchLength(minimized_join, numberLeaf, nodes, new_node)
         nodes.append(new_node)
         
         print("Merged nodes to: " + new_node.name)
@@ -263,7 +271,7 @@ def JC_distance(d_u: float) -> float:
 
     return jd_d
 
-def BrachLength(minimized_join, numberLeaf, nodes, new_node):
+def BranchLength(minimized_join, numberLeaf, nodes, new_node):
     n1 = minimized_join[0].index
     n2 = minimized_join[1].index
     if n1 < numberLeaf and n2 < numberLeaf:      #connect single leaf with other single leaf
@@ -327,3 +335,52 @@ def PrintNewick(nodes: list):
     print('\nNewick string:', newick_str)
 
 
+def NNI(nodes):
+
+    # TODO select internal nodes in log2(N)+1 rounds
+
+    # Loop log2(N)+1 times
+        # Loop over all nodes
+            # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
+            # For each possible combination of fixed nodes, find the best topology
+            # Do all switches
+
+    best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
+    print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
+
+    # TODO Update topology if changes are made
+
+    return nodes
+
+
+def MinimizedEvolution(n1, n2, n3, n4):
+    """ Evaluate all possible topologies with four nodes surrounding two fixed nodes
+    and find the topology that minimizes the evolution citerion.
+
+    Args:
+        n1 (node): node
+
+    Returns:
+        best_topology (list): list of lists that contain the nodes that form the best topology
+
+    """
+
+    # All possible topologies involving these nodes
+    option1 = [[n1, n2], [n3, n4]]
+    option2 = [[n1, n3], [n2, n4]]
+    option3 = [[n1, n4], [n2, n3]]
+    options = [option1, option2, option3]
+
+    # Calculate the evolution criterion for each possible topology
+    dist_options = []
+    for ii in range(len(options)):
+        dist_a = JC_distance(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
+        dist_b = JC_distance(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
+        dist_options.append(dist_a + dist_b)
+        print(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
+        print(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
+
+    # Choose the topology with the minimized criterion
+    best_topology = options[dist_options.index(min(dist_options))]
+    print("dist_option", dist_options)
+    return best_topology

@@ -6,7 +6,9 @@ class Node:
         self.branchlength = 0
         self.leftchild = None
         self.rightchild = None
+        self.parent = None
         self.active = True
+        self.leaf = False
         self.index = index
         if sequence != 'nosequence':
             self.profile = self.create_profile(sequence)
