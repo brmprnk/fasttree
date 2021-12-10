@@ -344,7 +344,7 @@ def NNI(nodes):
             # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
             # For each possible combination of fixed nodes, find the best topology
             # Do all switches
-
+    #
     best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
     print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
 
