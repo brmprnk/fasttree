@@ -35,7 +35,7 @@ def fast_tree(sequences) -> str:
     # Actual first step : Unique sequences ( page 1646, do later )
 
     # Step 1 of algorithm : Create total profile T
-    T = Profile(nodes)  # <----------------------------------------------------------------- why are we doing this??
+    # T = Profile(nodes)  # <----------------------------------------------------------------- why are we doing this??
     # print("Total profile T")
     # pp.pprint(T)
 
@@ -44,7 +44,7 @@ def fast_tree(sequences) -> str:
 
     # Step 3 : Create initial topology
     CreateInitialTopology(nodes)
-
+    
     # Step 4 : Nearest Neighbor Interchanges
     NNI(nodes)
     
@@ -53,7 +53,7 @@ def fast_tree(sequences) -> str:
 
 
 
-def Profile(nodes: list) -> list:
+# def Profile(nodes: list) -> list:
     """Calculate Profile of internal nodes
     
         internalNodes (list): The sequences of internal nodes
@@ -62,13 +62,31 @@ def Profile(nodes: list) -> list:
     Returns:
         Profile (list): the profile matrix containing ratios 
     """
+    
     sequences = []
     for node in nodes:
         sequences.append(node.sequence)
     columns = [''.join(seq) for seq in zip(*sequences)]
     return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
 
-def uncorrectedDistance(profile: list) -> float:
+def averageProfile(nodes: list) ->  list:
+    '''Calculates the average of profiles of internal nodes
+    
+        profiles of internalNodes (list): The profiles of internal nodes
+    Returns: 
+        Average profile (list): the profile matrix containing average of two profiles
+    '''
+    p1 = nodes[0].profile
+    p2 = nodes[1].profile
+    ptotal = []
+    for i in range(len(p1)):
+        pbase = []
+        for j  in range((4)):
+            pbase.append((p1[i][j] + p2[i][j]) / 2)
+        ptotal.append(pbase)
+    return ptotal
+
+# def uncorrectedDistance(profile: list) -> float:
     """Calculate uncorrected distance
     
     The fraction of position that differ by using profiles. It's also #differences/sequence length
@@ -93,11 +111,11 @@ def uncorDistance(profiles: list) -> float:
     differ = 0
     length = len(profiles[1])
     for k in range(length):
-        print(profiles[0][k], profiles[1][k][:])
+        
         if profiles[0][k][:] != profiles[1][k][:]:
             differ += 1
 
-    print(len(profiles[1]), differ)
+    
     fraction = differ / length
     return fraction
 
@@ -163,7 +181,7 @@ def out_distance(i, nodes):
     """
     active_nodes = 1  # i is always an active node
     dist_to_others = 0
-
+    dist_to_others1 = 0
     for j in nodes:
         if j.name == i:
             continue
@@ -172,9 +190,10 @@ def out_distance(i, nodes):
 
         active_nodes += 1
 
-        profile_i_j = Profile([i, j])
-
-        dist_to_others += uncorrectedDistance(profile_i_j)
+        profile_i_j = averageProfile([i,j])       
+        # dist_to_others += uncorrectedDistance(profile_i_j)
+        dist_to_others1 += uncorDistance([profile_i_j, i.profile])
+    # print(dist_to_others-dist_to_others1)
 
     # Don't divide by 0
     if active_nodes == 2:
@@ -198,8 +217,9 @@ def minimize_nj_criterion(nodes, index):
         for j in active_nodes:
             if i == j:
                 continue
-            temp_profile_new_node = Profile([i, j]) #calculates profile of potential merge
-            criterion = uncorrectedDistance(temp_profile_new_node) - out_distance(i, nodes) - out_distance(j, nodes)
+            temp_profile_new_node = averageProfile([i, j]) #calculates profile of potential merge
+            criterion = uncorDistance([temp_profile_new_node, i.profile]) - out_distance(i, nodes) - out_distance(j, nodes)
+            
             if criterion < min_dist: #if best join for now
                 profile_new_node = temp_profile_new_node #sets profile of new node to profile of best join
                 min_dist = criterion
@@ -229,12 +249,13 @@ def CreateInitialTopology(nodes):
         nodes[int(minimized_join[1].index)].active = False
         nodes[int(minimized_join[0].index)].active = False
         # append the newly joined node to list of nodes 
-        # BranchLength(minimized_join, numberLeaf, nodes, new_node)
+        BranchLength(minimized_join, numberLeaf, nodes, new_node)
         nodes.append(new_node)
         
-        print("Merged nodes to: " + new_node.name)
-        print("left child: " + str(nodes[len(nodes)-1].leftchild))
-        print("right child: " + str(nodes[len(nodes)-1].rightchild))
+        # print(new_node.name, nodes[minimized_join[0].index].branchlength)
+        # print("Merged nodes to: " + new_node.name)
+        # print("left child: " + str(nodes[len(nodes)-1].leftchild))
+        # print("right child: " + str(nodes[len(nodes)-1].rightchild))
    
 def JC_distance(d_u: float) -> float:
     """Compute Jukes-Cantor distance of FastTree's uncorrected distance
@@ -276,17 +297,20 @@ def BranchLength(minimized_join, numberLeaf, nodes, new_node):
     n2 = minimized_join[1].index
     if n1 < numberLeaf and n2 < numberLeaf:      #connect single leaf with other single leaf
         fraction = uncorDistance([nodes[n1].profile, nodes[n2].profile])
-        new_node.branchlength = JC_distance(fraction)
+        nodes[n1].branchlength = JC_distance(fraction)
+        nodes[n2].branchlength = JC_distance(fraction)
     elif n1 < numberLeaf and n2 >= numberLeaf:    #connect single leaf with other branch
         d12 = uncorDistance([nodes[n1].profile, nodes[nodes[n2].leftchild].profile])
         d13 = uncorDistance([nodes[n1].profile, nodes[nodes[n2].rightchild].profile])
         d23 = uncorDistance([nodes[nodes[n2].leftchild].profile, nodes[nodes[n2].rightchild].profile])
-        new_node.branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
+        nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
+        nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
     elif n2 < numberLeaf and n1 >= numberLeaf:    #connect single leaf with other branch
         d12 = uncorDistance([nodes[n2].profile, nodes[nodes[n1].leftchild].profile])
         d13 = uncorDistance([nodes[n2].profile, nodes[nodes[n1].rightchild].profile])
         d23 = uncorDistance([nodes[nodes[n2].leftchild].profile, nodes[nodes[n2].rightchild].profile])
-        new_node.branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2  
+        nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2 
+        nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2 
     else:                                          #connect two branches
         d13 = uncorDistance([nodes[nodes[n1].leftchild].profile,nodes[nodes[n2].leftchild].profile])
         d14 = uncorDistance([nodes[nodes[n1].leftchild].profile,nodes[nodes[n2].rightchild].profile])
@@ -294,7 +318,8 @@ def BranchLength(minimized_join, numberLeaf, nodes, new_node):
         d24 = uncorDistance([nodes[nodes[n1].rightchild].profile,nodes[nodes[n2].rightchild].profile])
         d12 = uncorDistance([nodes[nodes[n1].leftchild].profile,nodes[nodes[n1].rightchild].profile])
         d34 = uncorDistance([nodes[nodes[n2].leftchild].profile,nodes[nodes[n2].rightchild].profile])
-        new_node.branchlength = (JC_distance(d13) + JC_distance(d14) + JC_distance(d23) + JC_distance(d24))/4 - (JC_distance(d12) + JC_distance(d34))/2
+        nodes[n1].branchlength = (JC_distance(d13) + JC_distance(d14) + JC_distance(d23) + JC_distance(d24))/4 - (JC_distance(d12) + JC_distance(d34))/2
+        nodes[n2].branchlength = (JC_distance(d13) + JC_distance(d14) + JC_distance(d23) + JC_distance(d24))/4 - (JC_distance(d12) + JC_distance(d34))/2
 
 
 def PrintNewick(nodes: list):
@@ -325,9 +350,10 @@ def PrintNewick(nodes: list):
 
         # Check if node has children
         if node.leftchild is None:              # Right node not checked as it always has zero or two children
-            newick_list[replace] = node.name    # Replace node index by it's name (this is a leaf node)
+            newick_list[replace] = node.name     # Replace node index by it's name (this is a leaf node)
+        # + ':' + str(round(node.branchlength,3))
         else:
-            newick_list[replace:replace+1] = ('(', node.leftchild, ':', str(round(node.branchlength,3)), ',', node.rightchild, ':', str(round(node.branchlength, 3)),')')   # Replace node index by the index of it's children
+            newick_list[replace:replace+1] = ('(', node.leftchild, ',', node.rightchild,')')   # Replace node index by the index of it's children
         # print('newick list at end of iteration', newick_list)  
     # print('Newick list', newick_list)
 
