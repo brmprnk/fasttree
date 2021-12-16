@@ -7,10 +7,14 @@ References to page numbers in this code are referring to the paper:
     Paper can be found on https://pubmed.ncbi.nlm.nih.gov/19377059/
 """
 import math
-import pprint as pp  # For pretty printing (Replace with own code before submission)
 import sys
+from queue import PriorityQueue
+
+import pprint as pp  # For pretty printing (Replace with own code before submission)
+import numpy as np
 
 from src.node import Node
+from src.tree import Tree
 # from src.NNI import NNI
 
 def fast_tree(sequences) -> str:
@@ -25,10 +29,11 @@ def fast_tree(sequences) -> str:
     print("The sequences entered into the program : ")
     pp.pprint(sequences)
     nodes = []
-    for ii,seq in enumerate(sequences.keys()):
+    for ii, seq in enumerate(sequences.keys()):
         node = Node(seq, ii, sequences[seq])
         node.leaf = True
         nodes.append(node)
+
 
     # Actual first step : Unique sequences ( page 1646, do later )
 
@@ -38,19 +43,113 @@ def fast_tree(sequences) -> str:
     # pp.pprint(T)
 
     # Step 2 : Top hits sequence
-    # Skip for now
+    nodes = top_hits_init(nodes)
 
-    # Step 3 : Create initial topology
-    CreateInitialTopology(nodes)
-    print("Initial topology is created:")
-    PrintNewick(nodes)
+    # # Step 3 : Create initial topology
+    # CreateInitialTopology(nodes)
+    # print("Initial topology is created:")
+    # PrintNewick(nodes)
 
-    # Step 4 : Nearest Neighbor Interchanges
-    NNI(nodes)
-    print("NNI is finished:")
+    # # Step 4 : Nearest Neighbor Interchanges
+    # NNI(nodes)
+    # print("NNI is finished:")
 
-    # Final step: print tree topology as Newick string
-    PrintNewick(nodes)
+    # # Final step: print tree topology as Newick string
+    # PrintNewick(nodes)
+
+def top_hits_init(nodes: list) -> list:
+    """
+    Create top-hits list for all N nodes before joining.
+g
+    Paper excerpt:
+    Before doing any joins, FastTree estimates these lists for all N sequences by assuming that,
+    if A and B have similar sequences, then the top-hits lists of A and B will largely overlap.
+    More precisely, FastTree computes the 2m top hits of A, where the factor of two is a safety factor.
+    Then, for each node B within the top m hits of A that does not already have a top-hits list,
+    FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
+    """
+    N = len(nodes)
+    m = int(math.sqrt(N))
+
+    # For each node, FastTree records a top-hits node.
+    # Should this be randomized ? random.shuffle(nodes)
+    for A in nodes:
+        print("Creating top hits for ", A.index)
+
+        # Since we infer top-hits list of B through A, a node B might already have a tophits list, so skip.
+        if A.tophits is not None:
+            continue
+        # Compute the 2m tophits of a node A (2 is a safety factor)
+        # Paper suggests using a PQ to speed up top hits later
+        A.tophits = PriorityQueue()
+
+        # Get top-hits sorted
+        for node in nodes:
+            if A.index == node.index:
+                continue
+
+            temp_profile_new_node = averageProfile([A, node]) #calculates profile of potential merge
+
+            # closest is defined according to the Neighbor-Joining criterion
+            criterion = uncorDistance(
+                [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
+            
+            A.tophits.put((criterion, node.index))
+
+            
+        # Then, for each node B within the top m hits of A that does not already have a top-hits list,
+        # FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
+        
+        # For top m hits of A
+        for ii in range(m):  
+            # Make sure A has at least m hits
+            if ii >= A.tophits.qsize() - 1: 
+                break
+
+            # top-hits are stored as tuple, (distance, node_index)
+            B_index = A.tophits.get(ii)[1]
+            B = nodes[B_index]
+            print(B.index)
+
+            # That does not already have a top-hits list
+            if B.tophits is not None:
+                continue
+            
+            # Top hits of B are found in the top 2m hits of A
+            B.tophits = PriorityQueue()
+            for jj in range(2 * m):
+
+                # Make sure A has a hit
+                if jj >= A.tophits.qsize() - 1:
+                    break
+                node_index = A.tophits.get(jj)[1]
+                node = nodes[node_index]
+
+                # Don't add yourself
+                if B.index == node.index:
+                    continue
+
+                temp_profile_new_node = averageProfile([A, node]) #calculates profile of potential merge
+
+                # closest is defined according to the Neighbor-Joining criterion
+                criterion = uncorDistance(
+                    [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
+                
+                B.tophits.put((criterion, node.index))
+
+    # Print the initial top-hits table for each node
+    # for node in nodes:
+    #     if node.tophits is None:
+    #         print("Node ", node.index, "has no top-hits")
+        
+    #     print("Tophits of node", node.index)
+    #     while not node.tophits.empty():
+    #         print(node.tophits.get())
+
+    #     print()
+
+    return nodes
+
 
 
 def averageProfile(nodes: list) ->  list:
