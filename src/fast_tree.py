@@ -7,7 +7,7 @@ References to page numbers in this code are referring to the paper:
     Paper can be found on https://pubmed.ncbi.nlm.nih.gov/19377059/
 """
 import math
-import pprint as pp # For pretty printing (Replace with own code before submission)
+import pprint as pp  # For pretty printing (Replace with own code before submission)
 import sys
 
 from src.node import Node
@@ -25,11 +25,9 @@ def fast_tree(sequences) -> str:
     print("The sequences entered into the program : ")
     pp.pprint(sequences)
     nodes = []
-    i = 0
-    for seq in sequences.keys():
-        node = Node(seq, i, sequences[seq])
+    for ii,seq in enumerate(sequences.keys()):
+        node = Node(seq, ii, sequences[seq])
         node.leaf = True
-        i +=1
         nodes.append(node)
 
     # Actual first step : Unique sequences ( page 1646, do later )
@@ -44,36 +42,22 @@ def fast_tree(sequences) -> str:
 
     # Step 3 : Create initial topology
     CreateInitialTopology(nodes)
-    
+    print("Initial topology is created:")
+    PrintNewick(nodes)
+
     # Step 4 : Nearest Neighbor Interchanges
     NNI(nodes)
-    
+    print("NNI is finished:")
+
     # Final step: print tree topology as Newick string
     PrintNewick(nodes)
 
 
-
-# def Profile(nodes: list) -> list:
-    """Calculate Profile of internal nodes
-    
-        internalNodes (list): The sequences of internal nodes
-    Args:
-
-    Returns:
-        Profile (list): the profile matrix containing ratios 
-    """
-    
-    sequences = []
-    for node in nodes:
-        sequences.append(node.sequence)
-    columns = [''.join(seq) for seq in zip(*sequences)]
-    return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
-
 def averageProfile(nodes: list) ->  list:
     '''Calculates the average of profiles of internal nodes
-    
+
         profiles of internalNodes (list): The profiles of internal nodes
-    Returns: 
+    Returns:
         Average profile (list): the profile matrix containing average of two profiles
     '''
     p1 = nodes[0].profile
@@ -86,42 +70,25 @@ def averageProfile(nodes: list) ->  list:
         ptotal.append(pbase)
     return ptotal
 
-# def uncorrectedDistance(profile: list) -> float:
-    """Calculate uncorrected distance
-    
-    The fraction of position that differ by using profiles. It's also #differences/sequence length
-
-    Args:
-        profile (list): The profile matrix of sequences of internal nodes containing ratios
-
-    Returns:
-        (float): the distance between internal nodes
-    """
-    k = len(profile)
-    differ = 0
-    for i in range(k):
-        if 1.0 not in profile[i]:
-            differ += 1
-    fraction = differ / k
-    # print(differ)
-    return fraction
-
 
 def uncorDistance(profiles: list) -> float:
     differ = 0
     length = len(profiles[1])
     for k in range(length):
-        
+
         if profiles[0][k][:] != profiles[1][k][:]:
             differ += 1
 
-    
+
     fraction = differ / length
     return fraction
+
 
 """Following 25 rules do the same as uncorrectedDistance but uses sequences of nodes as input and returns list of distances
 
     """
+
+
 def makeCombisofChildren(children: list) -> list:
     """Make combinations of all children
     
@@ -135,9 +102,10 @@ def makeCombisofChildren(children: list) -> list:
     """
     combi = []
     for i, v1 in enumerate(children):
-        for j in range(i+1, len(children)):
-            combi.append( [v1, children[j]])
+        for j in range(i + 1, len(children)):
+            combi.append([v1, children[j]])
     return combi
+
 
 def HammingDistance(combi: list) -> list:
     """Calculate hamming distance between 2 nodes
@@ -157,6 +125,7 @@ def HammingDistance(combi: list) -> list:
         distance.append(hammingdistance)
     return distance
 
+
 def SequenceDistance(combi: list, k: int) -> list:
     """calculate the sequence distance between combinations of all sequences
     
@@ -170,8 +139,9 @@ def SequenceDistance(combi: list, k: int) -> list:
     ham = HammingDistance(combi)
     seqDis = []
     for i in range(len(ham)):
-        seqDis.append(ham[i]/int(k))
+        seqDis.append(ham[i] / int(k))
     return seqDis
+
 
 def out_distance(i, nodes):
     """Calculates r distance of i : r(i)
@@ -190,7 +160,7 @@ def out_distance(i, nodes):
 
         active_nodes += 1
 
-        profile_i_j = averageProfile([i,j])       
+        profile_i_j = averageProfile([i,j])
         # dist_to_others += uncorrectedDistance(profile_i_j)
         dist_to_others1 += uncorDistance([profile_i_j, i.profile])
     # print(dist_to_others-dist_to_others1)
@@ -203,6 +173,7 @@ def out_distance(i, nodes):
     # print("Out distance r({}) = ".format(i.name), r)
     return r
 
+
 def minimize_nj_criterion(nodes, index):
     """Returns i,j for which d(i, j) - r(i) -r(j) is minimal and corresponding new node of merging i,j
     """
@@ -213,25 +184,24 @@ def minimize_nj_criterion(nodes, index):
 
     min_dist = sys.float_info.max
     best_join = (0, 0)
-    for i  in active_nodes:
+    for i in active_nodes:
         for j in active_nodes:
             if i == j:
                 continue
             temp_profile_new_node = averageProfile([i, j]) #calculates profile of potential merge
             criterion = uncorDistance([temp_profile_new_node, i.profile]) - out_distance(i, nodes) - out_distance(j, nodes)
-            
+
             if criterion < min_dist: #if best join for now
                 profile_new_node = temp_profile_new_node #sets profile of new node to profile of best join
                 min_dist = criterion
-                best_join = (i, j) #saves best joining nodes
+                best_join = (i, j)  # saves best joining nodes
 
-
-    #save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
-    #we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
+    # save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
+    # we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
     new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), int(index), 'nosequence')
     new_node.profile = profile_new_node
     new_node.active = True
-    #add indices of left child, right child
+    # add indices of left child, right child
     new_node.leftchild = best_join[0].index
     new_node.rightchild = best_join[1].index
     nodes[best_join[0].index].parent = new_node.index
@@ -240,10 +210,10 @@ def minimize_nj_criterion(nodes, index):
     # print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
     return best_join, new_node
 
+
 def CreateInitialTopology(nodes):
     numberLeaf = len(nodes)
-    for i in range(numberLeaf-1):
-    
+    for i in range(numberLeaf - 1):
         minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
         # make joined nodes inactive
         nodes[int(minimized_join[1].index)].active = False
@@ -284,13 +254,14 @@ def JC_distance(d_u: float) -> float:
     # Calculate Jukes-Cantor distance (d in paper)
     # Paper mentions log, literature uses ln.
     # Therefore we also use log base 10
-    jd_d = -0.75 * math.log(1 - (4/3) * d_u)
+    jd_d = -0.75 * math.log(1 - (4 / 3) * d_u)
 
     # For sequences that do not overlap, FastTree uses a max distance of 3.0
     if jd_d > max_distance:
         return max_distance
 
     return jd_d
+
 
 def BranchLength(minimized_join, numberLeaf, nodes, new_node):
     n1 = minimized_join[0].index
@@ -309,8 +280,8 @@ def BranchLength(minimized_join, numberLeaf, nodes, new_node):
         d12 = uncorDistance([nodes[n2].profile, nodes[nodes[n1].leftchild].profile])
         d13 = uncorDistance([nodes[n2].profile, nodes[nodes[n1].rightchild].profile])
         d23 = uncorDistance([nodes[nodes[n2].leftchild].profile, nodes[nodes[n2].rightchild].profile])
-        nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2 
-        nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2 
+        nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
+        nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
     else:                                          #connect two branches
         d13 = uncorDistance([nodes[nodes[n1].leftchild].profile,nodes[nodes[n2].leftchild].profile])
         d14 = uncorDistance([nodes[nodes[n1].leftchild].profile,nodes[nodes[n2].rightchild].profile])
@@ -357,24 +328,112 @@ def PrintNewick(nodes: list):
         # print('newick list at end of iteration', newick_list)  
     # print('Newick list', newick_list)
 
-    newick_str =  "".join(newick_list)
+    newick_str = "".join(newick_list)+';'
     print('\nNewick string:', newick_str)
 
 
 def NNI(nodes):
+    print('start NNI')
+    nn = sum([node.leaf for node in nodes])  # number of leaf nodes = number of unique sequences
 
-    # TODO select internal nodes in log2(N)+1 rounds
+    print('#nodes:', len(nodes))
+    print('#rounds:', round(math.log(nn) + 1))
 
-    # Loop log2(N)+1 times
+    # Repeat log2(N)+1 times
+    for ii in range(round(math.log(nn) + 1)):
         # Loop over all nodes
+        for node in nodes:
             # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
-            # For each possible combination of fixed nodes, find the best topology
-            # Do all switches
-    #
-    best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
-    print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
+            # go from bottom to top
+            if node.leaf:  # skip all leaf nodes as you cannot fix them to try a new topology
+                continue
+            if node.parent is None:  # skip the root node
+                continue
+            if nodes[node.parent].parent is None:  # skip the nodes with root node as parent
+                continue
 
-    # TODO Update topology if changes are made
+            # node ii is fixed together with its parent qq
+            qq = node.parent
+
+            # get the indices of the nodes that can be swapped
+            jj = node.leftchild     # child of original node
+            kk = node.rightchild    # child of original node
+            ss = nodes[qq].parent   # parent of the second fixed node
+            # find the other child of node qq (original node is either left or right child)
+            if nodes[qq].rightchild == node.index:
+                rr = nodes[qq].leftchild    # child of second fixed node (qq)
+            else:
+                rr = nodes[qq].rightchild   # child of second fixed node (qq)
+            print('NNI compares', jj, kk, ss, rr)
+
+            # For each possible combination of fixed nodes, find the best topology
+            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[ss], nodes[rr])
+            print('NNI best topology', best_top[0][0].index, best_top[0][1].index, best_top[1][0].index,
+                  best_top[1][1].index)
+
+            # Do all switches
+
+            # maximum of one switch can be made per round, stop checking if switch was found
+            # ss is never switched, no need to check
+            # if rr is switched, the switch is already taken care of when checking jj or kk, no need to check again
+
+            # if node was switched, switch parent and children
+            if jj != best_top[0][0].index:
+                # save indices of node jj
+                jj_parent = nodes[jj].parent
+                jj_leftchild = nodes[jj].leftchild
+                jj_rightchild = nodes[jj].rightchild
+
+                # change indices of node jj to node from better topology
+                nodes[jj].parent = best_top[0][0].parent
+                nodes[jj].leftchild = best_top[0][0].leftchild
+                nodes[jj].rightchild = best_top[0][0].rightchild
+
+                # find the node from the better topology and change indices to the ones from jj
+                nodes[best_top[0][0].index].parent = jj_parent
+                nodes[best_top[0][0].index].leftchild = jj_leftchild
+                nodes[best_top[0][0].index].rightchild = jj_rightchild
+
+                # swap indices
+                nodes[jj].index = best_top[0][0].index
+                nodes[best_top[0][0].index].index = jj
+
+                # swap positions in node list
+                node_jj = nodes[jj]
+                nodes[jj] = nodes[best_top[0][0].index]
+                nodes[best_top[0][0].index] = node_jj
+
+                print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
+
+            elif kk != best_top[0][1].index:
+                # save indices of node kk
+                kk_parent = nodes[kk].parent
+                kk_leftchild = nodes[kk].leftchild
+                kk_rightchild = nodes[kk].rightchild
+
+                # change indices of node kk to node from better topology
+                nodes[kk].parent = best_top[0][1].parent
+                nodes[kk].leftchild = best_top[0][1].leftchild
+                nodes[kk].rightchild = best_top[0][1].rightchild
+
+                # find the node from the better topology and change indices to the ones from kk
+                nodes[best_top[0][1].index].parent = kk_parent
+                nodes[best_top[0][1].index].leftchild = kk_leftchild
+                nodes[best_top[0][1].index].rightchild = kk_rightchild
+
+                # swap indices
+                nodes[kk].index = best_top[0][1].index
+                nodes[best_top[0][1].index].index = kk
+
+                # swap positions in node list
+                node_kk = nodes[kk]
+                nodes[kk] = nodes[best_top[0][1].index]
+                nodes[best_top[0][1].index] = node_kk
+
+                print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
+
+    # best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
+    # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
 
     return nodes
 
@@ -393,8 +452,8 @@ def MinimizedEvolution(n1, n2, n3, n4):
 
     # All possible topologies involving these nodes
     option1 = [[n1, n2], [n3, n4]]
-    option2 = [[n1, n3], [n2, n4]]
-    option3 = [[n1, n4], [n2, n3]]
+    option2 = [[n1, n4], [n3, n2]]
+    option3 = [[n4, n2], [n3, n1]]
     options = [option1, option2, option3]
 
     # Calculate the evolution criterion for each possible topology
@@ -403,8 +462,8 @@ def MinimizedEvolution(n1, n2, n3, n4):
         dist_a = JC_distance(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
         dist_b = JC_distance(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
         dist_options.append(dist_a + dist_b)
-        print(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
-        print(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
+        # print(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
+        # print(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
 
     # Choose the topology with the minimized criterion
     best_topology = options[dist_options.index(min(dist_options))]
