@@ -69,7 +69,6 @@ def averageProfile(nodes: list) ->  list:
         for j  in range((4)):
             pbase.append((p1[i][j] * lambda1 + p2[i][j] * (1 - lambda1)))
         ptotal.append(pbase)
-    print(ptotal)
     return ptotal
 
 
