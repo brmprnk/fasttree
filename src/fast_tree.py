@@ -300,7 +300,7 @@ def NNI(nodes):
     nodes[nodes[9].index] = node_jj
     print(nodes[9].parent)
     print(nodes[8].parent)
-
+    
 
 
 
@@ -395,8 +395,7 @@ def NNI(nodes):
         for node in nodes:
             if node.leaf:  # skip all leaf nodes
                 continue
-            node.profile = averageProfile([node.leftchild, node.rightchild])
-
+            node.profile = averageProfile([nodes[node.leftchild], nodes[node.rightchild]])
     # best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
     # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
 
