@@ -149,7 +149,7 @@ def out_distance(i, nodes):
     Args:
         i (Node) : 
     """
-    active_nodes = 1  # i is always an active node
+    N_active_nodes = 1  # i is always an active node; is 
     dist_to_others = 0
     dist_to_others1 = 0
     for j in nodes:
@@ -158,7 +158,7 @@ def out_distance(i, nodes):
         if not j.active:
             continue
 
-        active_nodes += 1
+        N_active_nodes += 1
 
         profile_i_j = averageProfile([i,j])
         # dist_to_others += uncorrectedDistance(profile_i_j)
@@ -166,10 +166,10 @@ def out_distance(i, nodes):
     # print(dist_to_others-dist_to_others1)
 
     # Don't divide by 0
-    if active_nodes == 2:
+    if N_active_nodes == 2:
         return dist_to_others
 
-    r = dist_to_others / (active_nodes - 2)
+    r = dist_to_others / (N_active_nodes - 2)
     # print("Out distance r({}) = ".format(i.name), r)
     return r
 
