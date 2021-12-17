@@ -377,22 +377,16 @@ def NNI(nodes):
             # ss is never switched, no need to check
             # if rr is switched, the switch is already taken care of when checking jj or kk, no need to check again
 
-            # if node was switched, switch parent and children
+            # if node was switched, switch their parents
             if jj != best_top[0][0].index:
                 # save indices of node jj
                 jj_parent = nodes[jj].parent
-                jj_leftchild = nodes[jj].leftchild
-                jj_rightchild = nodes[jj].rightchild
 
                 # change indices of node jj to node from better topology
                 nodes[jj].parent = best_top[0][0].parent
-                nodes[jj].leftchild = best_top[0][0].leftchild
-                nodes[jj].rightchild = best_top[0][0].rightchild
 
                 # find the node from the better topology and change indices to the ones from jj
                 nodes[best_top[0][0].index].parent = jj_parent
-                nodes[best_top[0][0].index].leftchild = jj_leftchild
-                nodes[best_top[0][0].index].rightchild = jj_rightchild
 
                 # swap indices
                 nodes[jj].index = best_top[0][0].index
@@ -431,6 +425,12 @@ def NNI(nodes):
                 nodes[best_top[0][1].index] = node_kk
 
                 print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
+
+        # Recompute profiles of internal nodes
+        for node in nodes:
+            if node.leaf:  # skip all leaf nodes
+                continue
+            node.profile = averageProfile([node.leftchild, node.rightchild])
 
     # best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
     # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
