@@ -284,26 +284,18 @@ def NNI(nodes):
     # Manual swap to see if NNI is swapping
     jj = 8
     jj_parent = nodes[jj].parent
-    print(jj_parent)
     # change indices of node jj to node from better topology
     nodes[jj].parent = nodes[9].parent
-    print(nodes[9].parent)
     # find the node from the better topology and change indices to the ones from jj
-    nodes[nodes[9].index].parent = jj_parent
+    nodes[9].parent = jj_parent
 
     # swap indices
     nodes[jj].index = nodes[9].index
-    nodes[nodes[9].index].index = jj
-
+    nodes[9].index = jj
     # swap positions in node list
     node_jj = nodes[jj]
-    nodes[jj] = nodes[nodes[9].index]
-    nodes[nodes[9].index] = node_jj
-    print(nodes[9].parent)
-    print(nodes[8].parent)
-
-
-
+    nodes[jj] = nodes[9]
+    nodes[9] = node_jj
 
     # Repeat log2(N)+1 times
     for ii in range(round(math.log(nn) + 1)):
