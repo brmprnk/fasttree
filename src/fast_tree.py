@@ -60,14 +60,16 @@ def averageProfile(nodes: list) ->  list:
     Returns:
         Average profile (list): the profile matrix containing average of two profiles
     '''
+    lambda1 = 0.5
     p1 = nodes[0].profile
     p2 = nodes[1].profile
     ptotal = []
     for i in range(len(p1)):
         pbase = []
         for j  in range((4)):
-            pbase.append((p1[i][j] + p2[i][j]) / 2)
+            pbase.append((p1[i][j] * lambda1 + p2[i][j] * (1 - lambda1)))
         ptotal.append(pbase)
+    print(ptotal)
     return ptotal
 
 
@@ -300,7 +302,7 @@ def NNI(nodes):
     nodes[nodes[9].index] = node_jj
     print(nodes[9].parent)
     print(nodes[8].parent)
-    
+
 
 
 
