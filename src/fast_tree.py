@@ -74,7 +74,6 @@ g
     # For each node, FastTree records a top-hits node.
     # Should this be randomized ? random.shuffle(nodes)
     for A in nodes:
-        print("Creating top hits for ", A.index)
 
         # Since we infer top-hits list of B through A, a node B might already have a tophits list, so skip.
         if A.tophits is not None:
@@ -99,7 +98,7 @@ g
             
         # Then, for each node B within the top m hits of A that does not already have a top-hits list,
         # FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
-        
+
         # For top m hits of A
         for ii in range(m):  
             # Make sure A has at least m hits
@@ -107,9 +106,8 @@ g
                 break
 
             # top-hits are stored as tuple, (distance, node_index)
-            B_index = A.tophits.get(ii)[1]
+            B_index = A.tophits.queue[ii][1]
             B = nodes[B_index]
-            print(B.index)
 
             # That does not already have a top-hits list
             if B.tophits is not None:
@@ -122,7 +120,7 @@ g
                 # Make sure A has a hit
                 if jj >= A.tophits.qsize() - 1:
                     break
-                node_index = A.tophits.get(jj)[1]
+                node_index = A.tophits.queue[jj][1]
                 node = nodes[node_index]
 
                 # Don't add yourself
@@ -138,15 +136,15 @@ g
                 B.tophits.put((criterion, node.index))
 
     # Print the initial top-hits table for each node
-    # for node in nodes:
-    #     if node.tophits is None:
-    #         print("Node ", node.index, "has no top-hits")
+    for node in nodes:
+        if node.tophits is None:
+            print("Node ", node.index, "has no top-hits")
         
-    #     print("Tophits of node", node.index)
-    #     while not node.tophits.empty():
-    #         print(node.tophits.get())
+        print("Tophits of node", node.index)
+        for th in node.tophits.queue:
+            print(th)
 
-    #     print()
+        print()
 
     return nodes
 
