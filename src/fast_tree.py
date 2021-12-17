@@ -330,10 +330,10 @@ def NNI(nodes):
                 rr = nodes[qq].leftchild    # child of second fixed node (qq)
             else:
                 rr = nodes[qq].rightchild   # child of second fixed node (qq)
-            print('NNI compares', jj, kk, ss, rr)
+            print('NNI compares', jj, kk, rr, ss)
 
             # For each possible combination of fixed nodes, find the best topology
-            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[ss], nodes[rr])
+            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[rr], nodes[ss])
             print('NNI best topology', best_top[0][0].index, best_top[0][1].index, best_top[1][0].index,
                   best_top[1][1].index)
 
@@ -368,18 +368,12 @@ def NNI(nodes):
             elif kk != best_top[0][1].index:
                 # save indices of node kk
                 kk_parent = nodes[kk].parent
-                # kk_leftchild = nodes[kk].leftchild
-                # kk_rightchild = nodes[kk].rightchild
 
                 # change indices of node kk to node from better topology
                 nodes[kk].parent = best_top[0][1].parent
-                # nodes[kk].leftchild = best_top[0][1].leftchild
-                # nodes[kk].rightchild = best_top[0][1].rightchild
 
                 # find the node from the better topology and change indices to the ones from kk
                 nodes[best_top[0][1].index].parent = kk_parent
-                # nodes[best_top[0][1].index].leftchild = kk_leftchild
-                # nodes[best_top[0][1].index].rightchild = kk_rightchild
 
                 # swap indices
                 nodes[kk].index = best_top[0][1].index
@@ -417,8 +411,8 @@ def MinimizedEvolution(n1, n2, n3, n4):
 
     # All possible topologies involving these nodes
     option1 = [[n1, n2], [n3, n4]]
-    option2 = [[n1, n4], [n3, n2]]
-    option3 = [[n4, n2], [n3, n1]]
+    option2 = [[n1, n3], [n2, n4]]
+    option3 = [[n3, n2], [n1, n4]]
     options = [option1, option2, option3]
 
     # Calculate the evolution criterion for each possible topology
