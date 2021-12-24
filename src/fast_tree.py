@@ -175,12 +175,18 @@ def uncorDistance(nodes: list, join: list):
         du_ijk = del_ijk - u_ij - u_k
         return du_ijk   
 
-# def updistanceIJ(nodes: list, ij: list):
+def updistance(nodes: list, ijk: list):
+    ''' calculate updistance with formula's:
+            u(ij) ≡ ∆(i, j)/2 
+            u(k) has kids so look at leftchild and rightchild so becomes u(k_leftchild, k_rightchild)
+            u(k) = o for leaves
 
-#     return profileDistanceNew([nodes[ij[0]].profile, nodes[ij[1]].profile ]) / 2
-
-def updistance(nodes: list, ijk: Node):
-    
+    Args:
+        list with all nodes
+        list with nodes for which the updistance should be calculated (could have a length of 1 or 2 depending on u(ij) or u(k))
+    returns:
+        updistance u(ij) or u(k) 
+    '''
     if len(ijk) > 1:
         return profileDistanceNew([nodes[ijk[0]].profile, nodes[ijk[1]].profile ]) / 2
     elif nodes[ijk[0]].leaf == True: 
