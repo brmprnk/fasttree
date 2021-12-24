@@ -32,6 +32,9 @@ PARSER.add_argument('--file', '-f',
 PARSER.add_argument('--experiment', '-e',
                     help="Name of experiment",
                     default="experiment")
+PARSER.add_argument('-no-top-hits', '-th',
+                    help="Turns off the top-hits heuristic. Use to compare speed up w/ heuristic",
+                    default=False)
 
 def main() -> None:
     """Program entry function.
@@ -53,7 +56,7 @@ def main() -> None:
     sequences = readinput(args.aln_file)
 
     # Run FastTree
-    fast_tree(sequences)
+    fast_tree(args, sequences)
 
 def readinput(filepath: str) -> dict:
     """Processes .aln file into a mapping.

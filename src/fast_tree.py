@@ -12,12 +12,14 @@ from queue import PriorityQueue
 
 import pprint as pp  # For pretty printing (Replace with own code before submission)
 import numpy as np
+import argparse
 
 from src.node import Node
 from src.tree import Tree
+from src.tophits import TopHits
 # from src.NNI import NNI
 
-def fast_tree(sequences) -> str:
+def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     """FastTree Algorithm.
 
     Args:
@@ -26,6 +28,7 @@ def fast_tree(sequences) -> str:
     Returns:
         (str): A phylogenetic tree in Newick format.
     """
+
     print("The sequences entered into the program : ")
     pp.pprint(sequences)
     nodes = []
@@ -43,7 +46,8 @@ def fast_tree(sequences) -> str:
     # pp.pprint(T)
 
     # Step 2 : Top hits sequence
-    nodes = top_hits_init(nodes)
+    if not args.no_top_hits:
+        nodes = top_hits_init(nodes)
 
     # # Step 3 : Create initial topology
     # CreateInitialTopology(nodes)
@@ -60,7 +64,7 @@ def fast_tree(sequences) -> str:
 def top_hits_init(nodes: list) -> list:
     """
     Create top-hits list for all N nodes before joining.
-g
+
     Paper excerpt:
     Before doing any joins, FastTree estimates these lists for all N sequences by assuming that,
     if A and B have similar sequences, then the top-hits lists of A and B will largely overlap.
@@ -78,9 +82,9 @@ g
         # Since we infer top-hits list of B through A, a node B might already have a tophits list, so skip.
         if A.tophits is not None:
             continue
+
         # Compute the 2m tophits of a node A (2 is a safety factor)
-        # Paper suggests using a PQ to speed up top hits later
-        A.tophits = PriorityQueue()
+        A.tophits = TopHits(m)
 
         # Get top-hits sorted
         for node in nodes:
@@ -95,7 +99,6 @@ g
             
             A.tophits.put((criterion, node.index))
 
-            
         # Then, for each node B within the top m hits of A that does not already have a top-hits list,
         # FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
 
@@ -112,6 +115,15 @@ g
             # That does not already have a top-hits list
             if B.tophits is not None:
                 continue
+
+            # Before FastTree estimates the top-hits of B from the top-hits of A, 
+            # FastTree requires that du(A,B) ≤ 0.75·du(A,H2m), where H2m is A’s 2m-th best hit. (See supplement)
+            close_enough_factor = 0.75
+            du_A_B = uncorDistance([A.profile, B.profile])
+            du_A_H2m = uncorDistance([A.profile, A.tophits.queue[2 * m - 1]])
+            if du_A_B > close_enough_factor * du_A_H2m:
+                # du(AB) was not smaller than or equal to 0.75·du(A,H2m), so B was not close enough to perform this heuristic.
+                break
             
             # Top hits of B are found in the top 2m hits of A
             B.tophits = PriorityQueue()
@@ -147,6 +159,28 @@ g
         print()
 
     return nodes
+
+def tophits_new_node(new_node: Node) -> PriorityQueue():
+    """
+    After a join, FastTree computes the top-hits list for the new node in O(mLa) time
+    by comparing the node to all entries in the top-hits lists of its children.
+
+    Args:
+        new_node (Node) : The newly created inner node after a join
+    
+    Returns:
+        PriorityQueue : the tophits for the new node.
+    """
+
+    top_hits = PriorityQueue()
+
+    for th in new_node.leftchild.tophits.queue:
+        tophits.put(th)
+
+    for th in new_node.rightchild.tophits.queue:
+        tophits.put(th)
+
+    return tophits
 
 
 
@@ -303,6 +337,10 @@ def minimize_nj_criterion(nodes, index):
     new_node.rightchild = best_join[1].index
     nodes[best_join[0].index].parent = new_node.index
     nodes[best_join[1].index].parent = new_node.index
+
+    # Update top-hits for new node
+    new_node.tophits = tophits_new_node(new_node)
+
 
     # print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
     return best_join, new_node
