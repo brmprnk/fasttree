@@ -10,7 +10,8 @@ import math
 import sys
 from queue import PriorityQueue
 
-import pprint as pp  # For pretty printing (Replace with own code before submission)
+import pprint as pp
+from typing import Text  # For pretty printing (Replace with own code before submission)
 import numpy as np
 import argparse
 
@@ -41,7 +42,9 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     # Actual first step : Unique sequences ( page 1646, do later )
 
     # Step 1 of algorithm : Create total profile T
-    # T = Profile(nodes)  # <----------------------------------------------------------------- why are we doing this??
+    # Find a way to track T
+    T = update_T(nodes)
+
     # print("Total profile T")
     # pp.pprint(T)
 
@@ -57,7 +60,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     #### End of neighbor joining heuristic preparation
 
     # # # Step 3 : Create initial topology
-    # CreateInitialTopology(nodes, verbose=args.verbose)
+    CreateInitialTopology(nodes, args.no_top_hits, verbose=args.verbose)
     # print("Initial topology is created:")
     # PrintNewick(nodes)
 
@@ -67,6 +70,25 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
 
     # # Final step: print tree topology as Newick string
     # PrintNewick(nodes)
+
+def update_T(nodes: list) -> list:
+    """
+    We gaan ff breaken
+    """
+    all_profiles = []
+    for node in nodes:
+        if node.active:
+            all_profiles.append(node.profile)
+
+    print(all_profiles)
+    print("")
+    print([sum(y) for x in zip(*all_profiles) for y in x])
+    print([sum(y) for x in zip(*all_profiles) for y in x] / len(all_profiles))
+
+    return [sum(y) for x in zip(*all_profiles) for y in x] / len(all_profiles)
+
+
+
 
 def fast_NJ_best_joins(nodes: list, no_top_hits: bool, verbose: int=0) -> None:
     """
@@ -295,29 +317,119 @@ def minimize_nj_criterion(nodes, index):
     nodes[best_join[0].index].parent = new_node.index
     nodes[best_join[1].index].parent = new_node.index
 
-    # Update top-hits for new node
-    new_node.tophits = tophits_new_node(new_node)
+    # # Update top-hits for new node
+    # new_node.tophits = tophits_new_node(new_node)
 
 
     # print("Minimized distance = ", min_dist, "of nodes ", best_join[0].name, best_join[1].name)
     return best_join, new_node
 
 
-def CreateInitialTopology(nodes: list, verbose: int=0) -> list:
-    numberLeaf = len(nodes)
-    for i in range(numberLeaf - 1):
-        minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
-        # make joined nodes inactive
-        nodes[int(minimized_join[1].index)].active = False
-        nodes[int(minimized_join[0].index)].active = False
-        # append the newly joined node to list of nodes 
-        BranchLength(minimized_join, numberLeaf, nodes, new_node)
-        nodes.append(new_node)
+def create_join(nodes, minimized_join, new_node, verbose: int=0):
+    """
+    Join two nodes.
+
+
+    """
+    # make joined nodes inactive
+    nodes[int(minimized_join[1].index)].active = False
+    nodes[int(minimized_join[0].index)].active = False
+
+    # append the newly joined node to list of nodes 
+    nodes.append(new_node)
+
+    if verbose == 1:
+        print(new_node.name, nodes[minimized_join[0].index].branchlength)
+        print("Merged nodes to: " + new_node.name)
+        print("left child: " + str(nodes[len(nodes)-1].leftchild))
+        print("right child: " + str(nodes[len(nodes)-1].rightchild))
+
+
+    # Recalculate total profile T
+    # When we do a join, we also need to update the total profile (the average over all active nodes). To
+    # compute this profile takes O(nLa) time. However, we can subtract the joined nodes and add the new
+    # node to the total profile in O(La) time. (FastTree) recomputes the total profile from scratch every 200
+    # iterations to avoid roundoff errors from accumulating, where the choice of 200 is arbitrary. This adds 
+    # another O(N 2La/200) work.)
+    update_T(nodes)
+
+    # And update top-hits of new join
+
+    return nodes
+
+
+def CreateInitialTopology(nodes: list, no_top_hits: bool, verbose: int=0) -> list:
+
+    if no_top_hits:
+        numberLeaf = len(nodes)
+        for i in range(numberLeaf - 1):
+            minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
+            nodes = create_join(nodes, minimized_join, new_node, verbose)
         
-        # print(new_node.name, nodes[minimized_join[0].index].branchlength)
-        # print("Merged nodes to: " + new_node.name)
-        # print("left child: " + str(nodes[len(nodes)-1].leftchild))
-        # print("right child: " + str(nodes[len(nodes)-1].rightchild))
+    else:
+        # With top hits, we can use We use the FastNJ and local hill-climbing heuristics,
+        # with the further restriction that we consider only the top m candidates at each step
+
+        active_nodes = []
+        for node in nodes:
+            if node.active:
+                active_nodes.append(node)
+
+        # First find the best m joins among the best-hit entries for the n active nodes
+        # FastTree simply sorts all n entries, but the paper suggests a speed up using a PriorityQueue!
+        best_m_joins = PriorityQueue()
+        for node in active_nodes:
+
+            # Put in the best join pair (node, best_join)
+            best_m_joins.put((node.index, node.best_join[1]))
+        
+        # Then, we compute the current value of the neighbor-joining criterion for those m candidates,
+        # which takes O(mLa) time
+        m = active_nodes[0].tophits.m
+        best_candidate = (0, 0)  # (distance, node index)]
+        min_dist = sys.maxsize / 2
+        for _ in range(m):
+            candidate = best_m_joins.get()
+
+            i = nodes[candidate[0]]
+            j = nodes[candidate[1]]
+
+            temp_profile_new_node = averageProfile([i, j])  # calculates profile of potential merge
+            criterion = uncorDistance([temp_profile_new_node, i.profile]) - out_distance(i, nodes) - out_distance(j, nodes)
+
+            if criterion < min_dist: #if best join for now
+                best_candidate = candidate
+                min_dist = criterion
+
+        print("The best candidate = ", best_candidate)
+
+        # Given this candidate join, we do a local hill-climbing search for a better join
+        best_join = local_hill_climbing_tophits(nodes, best_candidate, min_dist, verbose=verbose)
+
+        # Make the join
+        create_join(nodes,)
+
+
+
+def local_hill_climbing_tophits(nodes: list, best_candidate: tuple, best_dist: float, verbose: int=0) -> tuple:
+    """
+    Perform Local Hill Climbing with the top-hits heuristic
+
+    Using the top-hits heuristic, we only search within the top-hit lists rather than
+    comparing the two nodes to all other active nodes.
+    """
+    for hit in nodes[best_candidate[0]].tophits.list:
+        if hit[0] < best_dist:
+            best_candidate = (best_candidate[0], hit[1])
+            best_dist = hit[0]
+
+    for hit in nodes[best_candidate[1]].tophits.list:
+        if hit[0] < best_dist:
+            best_candidate = (hit[1], best_candidate[1])
+            best_dist = hit[0]
+
+    return (nodes[best_candidate[0]], nodes[best_candidate[1]])
+    
    
 def JC_distance(d_u: float) -> float:
     """Compute Jukes-Cantor distance of FastTree's uncorrected distance
