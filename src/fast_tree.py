@@ -44,8 +44,8 @@ def fast_tree(sequences) -> str:
     # Step 3 : Create initial topology
     CreateInitialTopology(nodes, T)
     print("Initial topology is created:")
-    PrintNewick(nodes)
-    profileDistanceNew([nodes[2].profile, nodes[1].profile])
+    # PrintNewick(nodes)
+
     # Step 4 : Nearest Neighbor Interchanges
     NNI(nodes)
     print("NNI is finished:")
@@ -336,38 +336,40 @@ def BranchLength(minimized_join, numberLeaf, nodes, new_node):
 
 def PrintNewick(nodes: list):
     """ Generates a Newick string based on the list of nodes.
-        Uses the left and right child of each node as structure.
-        Assumes that the internal (merged) nodes are added to the nodes list in order of merging and that the children saved as indices.
 
         The Newick list will initially contain the index of each node.
-        Cycle through all nodes from last added to the first to build the structure.
+        Cycle through all nodes to build the structure.
         The index of internal nodes (= has children) will be replaced by the index of their children.
-        The index of leaf nodes (= has no children) will be replaces by the name of the leaf node.
+        The index of leaf nodes (= has no children) will be replaced by the name of the leaf node.
         This results in a list with all the names of the nodes with the right hierarchy of brackets.
 
     Args:
         nodes (list): all nodes in the tree, including internal (merged) nodes
 
     Returns:
-        Newick string (str): the desired format of the tree structure
+        Newick string (str): the desired format of the tree structure (newick string)
     """
 
-    # Initiate newick list for the root node (last added node to the list)
-    newick_list = ['(', nodes[-1].leftchild, ',', nodes[-1].rightchild, ')']
-    # print('Initial newick list', newick_list)
-    # Update newick list for each node
-    for node in reversed(nodes[:-1]):
-        # print('search for', node.index)
-        replace = newick_list.index(node.index) # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
+    # Initiate newick string with root node
+    for node in nodes:
+        if node.parent is None:
+            newick_list = ['(', node.leftchild, ',', node.rightchild, ')']
+            queue = [node.leftchild, node.rightchild]   # indices of nodes that are waiting to be replaced
+    # print('Newick string initialized')
 
-        # Check if node has children
-        if node.leftchild is None:              # Right node not checked as it always has zero or two children
-            newick_list[replace] = node.name     # Replace node index by it's name (this is a leaf node)
-        # + ':' + str(round(node.branchlength,3))
-        else:
-            newick_list[replace:replace+1] = ('(', node.leftchild, ',', node.rightchild,')')   # Replace node index by the index of it's children
-        # print('newick list at end of iteration', newick_list)  
-    # print('Newick list', newick_list)
+    while len(queue) > 0:
+        # print('New while iteration')
+        add_to_queue = []
+        for ii in queue:
+            replace = newick_list.index(ii)             # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
+            if nodes[ii].leaf:                          # skip leaf nodes
+                newick_list[replace] = nodes[ii].name   # Replace node index by it's name (this is a leaf node)
+            else:   # If not a leaf node,
+                newick_list[replace:replace+1] = ('(', nodes[ii].leftchild, ',', nodes[ii].rightchild, ')')   # Replace node index by the index of it's children
+                add_to_queue.extend([nodes[ii].leftchild, nodes[ii].rightchild])
+            queue.remove(ii)                            # Node is checked, remove from queue
+        queue.extend(add_to_queue)  # Add all new nodes in the newick list to the queue
+        # print('Newick list at end of iteration', newick_list)
 
     newick_str = "".join(newick_list)+';'
     print('\nNewick string:', newick_str)
@@ -380,6 +382,7 @@ def NNI(nodes):
     # print('#nodes:', len(nodes))
     # print('#rounds:', round(math.log(nn) + 1))
 
+    ########
     # Manual swap to see if NNI is swapping
     jj = 9
     kk = 4
@@ -398,34 +401,31 @@ def NNI(nodes):
     nodes[kk] = node_jj
 
     # Repeat log2(N)+1 times
-    for ii in range(round(math.log(nn) + 1)):
+    for ii in range(round(math.log(nn,2) + 1)):
         # Loop over all nodes
         for node in nodes:
             # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
             # go from bottom to top
             if node.leaf:  # skip all leaf nodes as you cannot fix them to try a new topology
                 continue
-            if node.parent is None:  # skip the root node
+            if node.parent is None:  # skip if ii is the root node
                 continue
-            if nodes[node.parent].parent is None:  # skip the nodes with root node as parent
-                continue
-
-            # node ii is fixed together with its parent qq
-            qq = node.parent
+            if nodes[node.parent].parent is None:  # if jj is root node: choose right child of the root as jj, and both its children as cc and dd
+                jj = nodes[node.parent].rightchild
+            else:
+                # node ii is fixed together with its parent jj
+                jj = node.parent
 
             # get the indices of the nodes that can be swapped
-            jj = node.leftchild     # child of original node
-            kk = node.rightchild    # child of original node
-            ss = nodes[qq].parent   # parent of the second fixed node
-            # find the other child of node qq (original node is either left or right child)
-            if nodes[qq].rightchild == node.index:
-                rr = nodes[qq].leftchild    # child of second fixed node (qq)
-            else:
-                rr = nodes[qq].rightchild   # child of second fixed node (qq)
-            print('NNI compares', jj, kk, rr, ss)
+            aa = node.leftchild         # child of original node
+            bb = node.rightchild        # child of original node
+            cc = nodes[jj].rightchild   # child of second fixed node (jj)
+            dd = nodes[jj].parent       # parent of the second fixed node (jj)
+
+            print('NNI compares', nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
             # For each possible combination of fixed nodes, find the best topology
-            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[rr], nodes[ss], nodes)
+            best_top = MinimizedEvolution(nodes[aa], nodes[bb], nodes[cc], nodes[dd], nodes)
             print('NNI best topology', best_top[0][0].index, best_top[0][1].index, best_top[1][0].index,
                   best_top[1][1].index)
 
@@ -436,47 +436,47 @@ def NNI(nodes):
             # if rr is switched, the switch is already taken care of when checking jj or kk, no need to check again
 
             # if node was switched, switch their parents
-            if jj != best_top[0][0].index:
+            if aa != best_top[0][0].index:
                 # save indices of node jj
-                jj_parent = nodes[jj].parent
+                aa_parent = nodes[aa].parent
 
                 # change indices of node jj to node from better topology
-                nodes[jj].parent = best_top[0][0].parent
+                nodes[aa].parent = best_top[0][0].parent
 
                 # find the node from the better topology and change indices to the ones from jj
-                nodes[best_top[0][0].index].parent = jj_parent
+                nodes[best_top[0][0].index].parent = aa_parent
 
                 # swap indices
-                nodes[jj].index = best_top[0][0].index
-                nodes[best_top[0][0].index].index = jj
+                nodes[aa].index = best_top[0][0].index
+                nodes[best_top[0][0].index].index = aa
 
                 # swap positions in node list
-                node_jj = nodes[jj]
-                nodes[jj] = nodes[best_top[0][0].index]
-                nodes[best_top[0][0].index] = node_jj
+                node_aa = nodes[aa]
+                nodes[aa] = nodes[best_top[0][0].index]
+                nodes[best_top[0][0].index] = node_aa
 
-                print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
+                print("swapped nodes", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
-            elif kk != best_top[0][1].index:
+            elif bb != best_top[0][1].index:
                 # save indices of node kk
-                kk_parent = nodes[kk].parent
+                bb_parent = nodes[bb].parent
 
                 # change indices of node kk to node from better topology
-                nodes[kk].parent = best_top[0][1].parent
+                nodes[bb].parent = best_top[0][1].parent
 
                 # find the node from the better topology and change indices to the ones from kk
-                nodes[best_top[0][1].index].parent = kk_parent
+                nodes[best_top[0][1].index].parent = bb_parent
 
                 # swap indices
-                nodes[kk].index = best_top[0][1].index
-                nodes[best_top[0][1].index].index = kk
+                nodes[bb].index = best_top[0][1].index
+                nodes[best_top[0][1].index].index = bb
 
                 # swap positions in node list
-                node_kk = nodes[kk]
-                nodes[kk] = nodes[best_top[0][1].index]
-                nodes[best_top[0][1].index] = node_kk
+                node_bb = nodes[bb]
+                nodes[bb] = nodes[best_top[0][1].index]
+                nodes[best_top[0][1].index] = node_bb
 
-                print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
+                print("swapped nodes", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
         # Recompute profiles of internal nodes
         for node in nodes:
