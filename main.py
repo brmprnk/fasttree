@@ -33,8 +33,13 @@ PARSER.add_argument('--experiment', '-e',
                     help="Name of experiment",
                     default="experiment")
 PARSER.add_argument('-no-top-hits', '-th',
+                    action='store_true',
                     help="Turns off the top-hits heuristic. Use to compare speed up w/ heuristic",
                     default=False)
+PARSER.add_argument('--verbose', '-v',
+                    type=int,
+                    help='Set verbose to 1 if you want to print information to the output console during execution',
+                    default=0)
 
 def main() -> None:
     """Program entry function.

@@ -16,7 +16,7 @@ import argparse
 
 from src.node import Node
 from src.tree import Tree
-from src.tophits import TopHits
+import src.tophits as tophits
 # from src.NNI import NNI
 
 def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
@@ -45,12 +45,19 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     # print("Total profile T")
     # pp.pprint(T)
 
-    # Step 2 : Top hits sequence
-    if not args.no_top_hits:
-        nodes = top_hits_init(nodes)
+    #### Heuristics for neighbor joining (with or without top-hits)
 
-    # # Step 3 : Create initial topology
-    # CreateInitialTopology(nodes)
+    # Top hits sequence
+    if not args.no_top_hits:
+        nodes = tophits.top_hits_init(nodes, verbose=args.verbose)
+
+    # FastNJ best joins
+    fast_NJ_best_joins(nodes, args.no_top_hits, verbose=args.verbose)
+  
+    #### End of neighbor joining heuristic preparation
+
+    # # # Step 3 : Create initial topology
+    # CreateInitialTopology(nodes, verbose=args.verbose)
     # print("Initial topology is created:")
     # PrintNewick(nodes)
 
@@ -61,104 +68,54 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     # # Final step: print tree topology as Newick string
     # PrintNewick(nodes)
 
-def top_hits_init(nodes: list) -> list:
+def fast_NJ_best_joins(nodes: list, no_top_hits: bool, verbose: int=0) -> None:
     """
-    Create top-hits list for all N nodes before joining.
+    The key idea in FastNJ is to store the best join for each node.
+    
+    The best join for each leaf is determined before the joins begin, and the best join for
+    each new interior node is determined when that node is created. When searching for the best join overall,
+    FastNJ considers only best join for each node, or n candidates. Thus, FastNJ requires a total of O(N 2)
+    time.
 
-    Paper excerpt:
-    Before doing any joins, FastTree estimates these lists for all N sequences by assuming that,
-    if A and B have similar sequences, then the top-hits lists of A and B will largely overlap.
-    More precisely, FastTree computes the 2m top hits of A, where the factor of two is a safety factor.
-    Then, for each node B within the top m hits of A that does not already have a top-hits list,
-    FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
+    Note: when using top-hits, then at the beginning the best join for each node is found in their top-hits lists.
     """
-    N = len(nodes)
-    m = int(math.sqrt(N))
-
-    # For each node, FastTree records a top-hits node.
-    # Should this be randomized ? random.shuffle(nodes)
-    for A in nodes:
-
-        # Since we infer top-hits list of B through A, a node B might already have a tophits list, so skip.
-        if A.tophits is not None:
-            continue
-
-        # Compute the 2m tophits of a node A (2 is a safety factor)
-        A.tophits = TopHits(m)
-
-        # Get top-hits sorted
-        for node in nodes:
-            if A.index == node.index:
-                continue
-
-            temp_profile_new_node = averageProfile([A, node]) #calculates profile of potential merge
-
-            # closest is defined according to the Neighbor-Joining criterion
-            criterion = uncorDistance(
-                [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
-            
-            A.tophits.put((criterion, node.index))
-
-        # Then, for each node B within the top m hits of A that does not already have a top-hits list,
-        # FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
-
-        # For top m hits of A
-        for ii in range(m):  
-            # Make sure A has at least m hits
-            if ii >= A.tophits.qsize() - 1: 
-                break
-
-            # top-hits are stored as tuple, (distance, node_index)
-            B_index = A.tophits.queue[ii][1]
-            B = nodes[B_index]
-
-            # That does not already have a top-hits list
-            if B.tophits is not None:
-                continue
-
-            # Before FastTree estimates the top-hits of B from the top-hits of A, 
-            # FastTree requires that du(A,B) ≤ 0.75·du(A,H2m), where H2m is A’s 2m-th best hit. (See supplement)
-            close_enough_factor = 0.75
-            du_A_B = uncorDistance([A.profile, B.profile])
-            du_A_H2m = uncorDistance([A.profile, A.tophits.queue[2 * m - 1]])
-            if du_A_B > close_enough_factor * du_A_H2m:
-                # du(AB) was not smaller than or equal to 0.75·du(A,H2m), so B was not close enough to perform this heuristic.
-                break
-            
-            # Top hits of B are found in the top 2m hits of A
-            B.tophits = PriorityQueue()
-            for jj in range(2 * m):
-
-                # Make sure A has a hit
-                if jj >= A.tophits.qsize() - 1:
-                    break
-                node_index = A.tophits.queue[jj][1]
-                node = nodes[node_index]
-
-                # Don't add yourself
-                if B.index == node.index:
+    if no_top_hits:
+        for i in nodes:
+            best_join = (sys.maxsize / 2, 0)  # (distance, node index)
+            for j in nodes:
+                if i.index == j.index:
                     continue
+                temp_profile_new_node = averageProfile([i, j])  # calculates profile of potential merge
+                criterion = uncorDistance([temp_profile_new_node, i.profile]) - out_distance(i, nodes) - out_distance(j, nodes)
 
-                temp_profile_new_node = averageProfile([A, node]) #calculates profile of potential merge
+                if criterion < best_join[0]: #if best join for now
+                    best_join = (criterion, j.index)
 
-                # closest is defined according to the Neighbor-Joining criterion
-                criterion = uncorDistance(
-                    [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
-                
-                B.tophits.put((criterion, node.index))
+            # Found the best join for i, now update it
+            i.best_join = best_join
 
-    # Print the initial top-hits table for each node
-    for node in nodes:
-        if node.tophits is None:
-            print("Node ", node.index, "has no top-hits")
-        
-        print("Tophits of node", node.index)
-        for th in node.tophits.queue:
-            print(th)
+    else:
+        for node in nodes:
+            # Nice, the best join for each node is found in their top-hits list already!
+            # But wait, while computing the top hits of A, we may discover that A,B is a better join than B,best(B).
 
-        print()
+            # So if the best_join was already set when A,B is a better join than B,best(B) was true, move on to the next
+            if node.best_join is not None:
+                continue
 
-    return nodes
+            # Okay after that check, we can use tophits
+            best_join_dist, best_join = node.tophits.list[0]
+            node.best_join = (best_join_dist, best_join)
+
+            best_B_dist, best_B = nodes[best_join].tophits.list[0]
+
+            # A, B is a better join than B, Best(B)
+            if best_B_dist > best_join_dist:
+                nodes[best_join].best_join = (best_join_dist, node.index)
+
+    if verbose == 1:
+        for node in nodes:
+            print('FastNJ best join for Node ', node.index, 'is', node.best_join)
 
 def tophits_new_node(new_node: Node) -> PriorityQueue():
     """
@@ -346,7 +303,7 @@ def minimize_nj_criterion(nodes, index):
     return best_join, new_node
 
 
-def CreateInitialTopology(nodes):
+def CreateInitialTopology(nodes: list, verbose: int=0) -> list:
     numberLeaf = len(nodes)
     for i in range(numberLeaf - 1):
         minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes))
