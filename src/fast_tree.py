@@ -237,52 +237,40 @@ def BranchLength(minimized_join, numberLeaf, nodes, new_node):
 
 def PrintNewick(nodes: list):
     """ Generates a Newick string based on the list of nodes.
-        Uses the left and right child of each node as structure.
-        Assumes that the internal (merged) nodes are added to the nodes list in order of merging and that the children saved as indices.
 
         The Newick list will initially contain the index of each node.
-        Cycle through all nodes from last added to the first to build the structure.
+        Cycle through all nodes to build the structure.
         The index of internal nodes (= has children) will be replaced by the index of their children.
-        The index of leaf nodes (= has no children) will be replaces by the name of the leaf node.
+        The index of leaf nodes (= has no children) will be replaced by the name of the leaf node.
         This results in a list with all the names of the nodes with the right hierarchy of brackets.
 
     Args:
         nodes (list): all nodes in the tree, including internal (merged) nodes
 
     Returns:
-        Newick string (str): the desired format of the tree structure
+        Newick string (str): the desired format of the tree structure (newick string)
     """
 
     # Initiate newick string with root node
     for node in nodes:
         if node.parent is None:
             newick_list = ['(', node.leftchild, ',', node.rightchild, ')']
-            replace = [node.leftchild, node.rightchild] # indices of nodes that should be replaced
+            queue = [node.leftchild, node.rightchild]   # indices of nodes that are waiting to be replaced
+    # print('Newick string initialized')
 
-    while len(replace) >= 0:
-        if nodes[replace[0]].leftchild is None:     # Right node not checked as it always has zero or two children
-            newick_list[replace[0]] = node.name     # Replace node index by it's name (this is a leaf node)
-        # + ':' + str(round(node.branchlength,3))
-        else:
-            newick_list[replace:replace+1] = ('(', node.leftchild, ',', node.rightchild, ')')   # Replace node index by the index of it's children
-        # print('newick list at end of iteration', newick_list)
-
-    # Initiate newick list for the root node (last added node to the list)
-    newick_list = ['(', nodes[-1].leftchild, ',', nodes[-1].rightchild, ')']
-
-    # Update newick list for each node
-    for node in reversed(nodes[:-1]):
-        # print('search for', node.index)
-        replace = newick_list.index(node.index) # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
-
-        # Check if node has children
-        if node.leftchild is None:              # Right node not checked as it always has zero or two children
-            newick_list[replace] = node.name     # Replace node index by it's name (this is a leaf node)
-        # + ':' + str(round(node.branchlength,3))
-        else:
-            newick_list[replace:replace+1] = ('(', node.leftchild, ',', node.rightchild,')')   # Replace node index by the index of it's children
-        # print('newick list at end of iteration', newick_list)  
-    # print('Newick list', newick_list)
+    while len(queue) > 0:
+        # print('New while iteration')
+        add_to_queue = []
+        for ii in queue:
+            replace = newick_list.index(ii)             # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
+            if nodes[ii].leaf:                          # skip leaf nodes
+                newick_list[replace] = nodes[ii].name   # Replace node index by it's name (this is a leaf node)
+            else:   # If not a leaf node,
+                newick_list[replace:replace+1] = ('(', nodes[ii].leftchild, ',', nodes[ii].rightchild, ')')   # Replace node index by the index of it's children
+                add_to_queue.extend([nodes[ii].leftchild, nodes[ii].rightchild])
+            queue.remove(ii)                            # Node is checked, remove from queue
+        queue.extend(add_to_queue)  # Add all new nodes in the newick list to the queue
+        # print('Newick list at end of iteration', newick_list)
 
     newick_str = "".join(newick_list)+';'
     print('\nNewick string:', newick_str)
