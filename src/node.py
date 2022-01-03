@@ -10,6 +10,13 @@ class Node:
         self.active = True
         self.leaf = False
         self.index = index
+
+        # Top-hits is uninitialized
+        self.tophits = None
+
+        # FastNJ best join heuristic
+        self.best_join = None
+
         if sequence != 'nosequence':
             self.profile = self.create_profile(sequence)
 
