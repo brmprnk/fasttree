@@ -7,7 +7,7 @@ References to page numbers in this code are referring to the paper or its supple
     Paper can be found on https://pubmed.ncbi.nlm.nih.gov/19377059/
 """
 
-import math
+from src.tree import Tree
 from operator import itemgetter
 
 
@@ -37,7 +37,7 @@ class TopHits:
         self.refreshFactor = 0.8
 
 
-def top_hits_init(nodes: list, verbose: int=0) -> list:
+def top_hits_init(ft: Tree) -> list:
     """
     Create top-hits list for all N nodes before joining.
 
@@ -48,22 +48,19 @@ def top_hits_init(nodes: list, verbose: int=0) -> list:
     Then, for each node B within the top m hits of A that does not already have a top-hits list,
     FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
     """
-    N = len(nodes)
-    m = int(math.sqrt(N))
-
     # For each node, FastTree records a top-hits node.
     # Should this be randomized ? random.shuffle(nodes)
-    for A in nodes:
+    for A in ft.nodes:
 
         # Since we infer top-hits list of B through A, a node B might already have a tophits list, so skip.
         if A.tophits is not None:
             continue
 
         # Compute the 2m tophits of a node A (2 is a safety factor)
-        A.tophits = TopHits(m)
+        A.tophits = TopHits(ft.m)
 
         # Get top-hits sorted
-        for node in nodes:
+        for node in ft.nodes:
             if A.index == node.index:
                 continue
 
@@ -71,26 +68,26 @@ def top_hits_init(nodes: list, verbose: int=0) -> list:
 
             # closest is defined according to the Neighbor-Joining criterion
             criterion = uncorDistance(
-                [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
+                [temp_profile_new_node, A.profile]) - out_distance(A, ft.nodes) - out_distance(node, ft.nodes)
             
             A.tophits.list.append((criterion, node.index))
 
         # For a Node A, only the top 2m tophits are required
         A.tophits.list = sorted(A.tophits.list, key=itemgetter(0))
-        A.tophits.list = A.tophits.list[:2 * m]
+        A.tophits.list = A.tophits.list[:2 * ft.m]
 
         # Then, for each node B within the top m hits of A that does not already have a top-hits list,
         # FastTree estimates the top hits of B by comparing B to the top 2m hits of A.
 
         # For top m hits of A
-        for ii in range(m):  
+        for ii in range(ft.m):
             # Make sure A has at least m hits
             if ii >= len(A.tophits.list) - 1: 
                 break
 
             # top-hits are stored as tuple, (distance, node_index)
             B_index = A.tophits.list[ii][1]
-            B = nodes[B_index]
+            B = ft.nodes[B_index]
 
             # That does not already have a top-hits list
             if B.tophits is not None:
@@ -100,7 +97,7 @@ def top_hits_init(nodes: list, verbose: int=0) -> list:
             # FastTree requires that du(A,B) ≤ 0.75·du(A,H2m), where H2m is A’s 2m-th best hit. (See supplement)
             close_enough_factor = 0.75
             du_A_B = uncorDistance([A.profile, B.profile])
-            H2m = nodes[A.tophits.list[2 * m - 1][1]]
+            H2m = ft.nodes[A.tophits.list[2 * ft.m - 1][1]]
             du_A_H2m = uncorDistance([A.profile, H2m.profile])
 
 
@@ -109,14 +106,14 @@ def top_hits_init(nodes: list, verbose: int=0) -> list:
                 break
             
             # Top hits of B are found in the top 2m hits of A
-            B.tophits = TopHits(m)
-            for jj in range(2 * m):
+            B.tophits = TopHits(ft.m)
+            for jj in range(2 * ft.m):
 
                 # Make sure A has a hit
                 if jj > len(A.tophits.list) - 1:
                     break
                 node_index = A.tophits.list[jj][1]
-                node = nodes[node_index]
+                node = ft.nodes[node_index]
 
                 # Don't add yourself
                 if B.index == node.index:
@@ -126,24 +123,24 @@ def top_hits_init(nodes: list, verbose: int=0) -> list:
 
                 # closest is defined according to the Neighbor-Joining criterion
                 criterion = uncorDistance(
-                    [temp_profile_new_node, A.profile]) - out_distance(A, nodes) - out_distance(node, nodes)
+                    [temp_profile_new_node, A.profile]) - out_distance(A, ft.nodes) - out_distance(node, ft.nodes)
                 
                 B.tophits.list.append((criterion, node.index))
         
     # Finally, some nodes will have been considered as A, having a tophits list of length 2m,
     # And some Nodes B, inferred from A, will have smaller ones.
     # But, "For each node, FastTree records a top-hits list: the nodes that are the closest m neighbors of that node"
-    for node in nodes:
-        node.tophits.list = node.tophits.list[:m]
+    for node in ft.nodes:
+        node.tophits.list = node.tophits.list[:ft.m]
 
-        if verbose == 1:
+        if ft.verbose == 1:
             print("Tophits of node", node.index)
             for th in node.tophits.list:
                 print(th)
 
             print()
 
-    return nodes
+    return ft.nodes
 
 def averageProfile(nodes: list) ->  list:
     '''Calculates the average of profiles of internal nodes
