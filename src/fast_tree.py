@@ -40,7 +40,7 @@ def fast_tree(sequences) -> str:
 
     # Step 2 : Top hits sequence
     # Skip for now
-    lambda1 = 0.4
+    lambda1 = 0.5
     # Step 3 : Create initial topology
     CreateInitialTopology(nodes, T, lambda1)
     print("Initial topology is created:")
@@ -84,15 +84,15 @@ def update_T(nodes: list) -> list:
 
     # print(all_profiles)
     # print("")
-    T = []
+    T = [] #Total profile
     for n in range(len(all_profiles[0])): #loop over length of string
-        Tx = [0,0,0,0]
+        Tx = [0,0,0,0] #frequency of total frequency vector is 0 for each base 
         for x in range(len(all_profiles)): #loop over #active nodes in list
             for y in range(4):
-                Tx[y] += all_profiles[x][n][y]
-                if x == len(all_profiles) - 1: #if last node is added divide by #active nodes
+                Tx[y] += all_profiles[x][n][y] #add values of frequency vector to total frequency vector (Tx)
+                if x == len(all_profiles) - 1: #if frequency vector of last node is added divide by #active nodes
                     Tx[y] = Tx[y] / len(all_profiles)
-        T.append(Tx)
+        T.append(Tx) #append total frequency vectors to total profile
     return T
 
 def averageProfile(nodes: list, lambda1: float) ->  list:
