@@ -170,13 +170,14 @@ def averageProfile(nodes: list) ->  list:
     Returns:
         Average profile (list): the profile matrix containing average of two profiles
     '''
+    lambda1 = 0.5
     p1 = nodes[0].profile
     p2 = nodes[1].profile
     ptotal = []
     for i in range(len(p1)):
         pbase = []
         for j  in range((4)):
-            pbase.append((p1[i][j] + p2[i][j]) / 2)
+            pbase.append((p1[i][j] * lambda1 + p2[i][j] * (1 - lambda1)))
         ptotal.append(pbase)
     return ptotal
 
@@ -194,72 +195,13 @@ def uncorDistance(profiles: list) -> float:
     return fraction
 
 
-"""Following 25 rules do the same as uncorrectedDistance but uses sequences of nodes as input and returns list of distances
-
-    """
-
-
-def makeCombisofChildren(children: list) -> list:
-    """Make combinations of all children
-    
-    put combinations of 2 sequences of all nodes in list. 
-
-    Args:
-        children (list): sequences of all nodes
-
-    Returns:
-        (list): combinations of all sequences
-    """
-    combi = []
-    for i, v1 in enumerate(children):
-        for j in range(i + 1, len(children)):
-            combi.append([v1, children[j]])
-    return combi
-
-
-def HammingDistance(combi: list) -> list:
-    """Calculate hamming distance between 2 nodes
-    
-    Args:
-        combi (list): list with combinations of all nodes 
-
-    Returns:
-        hamming distance (list): hamming distances of all input nodes
-    """
-    distance = []
-    for j in range(len(combi)):
-        hammingdistance = 0
-        for i in range(len(combi[0][0])):
-            if combi[j][0][i] != combi[j][1][i]:
-                hammingdistance += 1
-        distance.append(hammingdistance)
-    return distance
-
-
-def SequenceDistance(combi: list, k: int) -> list:
-    """calculate the sequence distance between combinations of all sequences
-    
-    Args:
-        combi (list): list with combinations of all nodes 
-        k (int): length of 1 sequence
-
-    Returns:
-        SequenceDistance (list): ratio of hamming distance/sequence length for each combination
-    """
-    ham = HammingDistance(combi)
-    seqDis = []
-    for i in range(len(ham)):
-        seqDis.append(ham[i] / int(k))
-    return seqDis
-
-
 def out_distance(i, nodes):
     """Calculates r distance of i : r(i)
 
     Args:
         i (Node) : 
     """
-    active_nodes = 1  # i is always an active node
+    N_active_nodes = 1  # i is always an active node; is 
     dist_to_others = 0
     dist_to_others1 = 0
     for j in nodes:
@@ -268,7 +210,7 @@ def out_distance(i, nodes):
         if not j.active:
             continue
 
-        active_nodes += 1
+        N_active_nodes += 1
 
         profile_i_j = averageProfile([i,j])
         # dist_to_others += uncorrectedDistance(profile_i_j)
@@ -276,10 +218,10 @@ def out_distance(i, nodes):
     # print(dist_to_others-dist_to_others1)
 
     # Don't divide by 0
-    if active_nodes == 2:
+    if N_active_nodes == 2:
         return dist_to_others
 
-    r = dist_to_others / (active_nodes - 2)
+    r = dist_to_others / (N_active_nodes - 2)
     # print("Out distance r({}) = ".format(i.name), r)
     return r
 
@@ -543,6 +485,22 @@ def NNI(nodes):
     print('#nodes:', len(nodes))
     print('#rounds:', round(math.log(nn) + 1))
 
+    # Manual swap to see if NNI is swapping
+    jj = 8
+    jj_parent = nodes[jj].parent
+    # change indices of node jj to node from better topology
+    nodes[jj].parent = nodes[9].parent
+    # find the node from the better topology and change indices to the ones from jj
+    nodes[9].parent = jj_parent
+
+    # swap indices
+    nodes[jj].index = nodes[9].index
+    nodes[9].index = jj
+    # swap positions in node list
+    node_jj = nodes[jj]
+    nodes[jj] = nodes[9]
+    nodes[9] = node_jj
+
     # Repeat log2(N)+1 times
     for ii in range(round(math.log(nn) + 1)):
         # Loop over all nodes
@@ -568,10 +526,10 @@ def NNI(nodes):
                 rr = nodes[qq].leftchild    # child of second fixed node (qq)
             else:
                 rr = nodes[qq].rightchild   # child of second fixed node (qq)
-            print('NNI compares', jj, kk, ss, rr)
+            print('NNI compares', jj, kk, rr, ss)
 
             # For each possible combination of fixed nodes, find the best topology
-            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[ss], nodes[rr])
+            best_top = MinimizedEvolution(nodes[jj], nodes[kk], nodes[rr], nodes[ss])
             print('NNI best topology', best_top[0][0].index, best_top[0][1].index, best_top[1][0].index,
                   best_top[1][1].index)
 
@@ -581,22 +539,16 @@ def NNI(nodes):
             # ss is never switched, no need to check
             # if rr is switched, the switch is already taken care of when checking jj or kk, no need to check again
 
-            # if node was switched, switch parent and children
+            # if node was switched, switch their parents
             if jj != best_top[0][0].index:
                 # save indices of node jj
                 jj_parent = nodes[jj].parent
-                jj_leftchild = nodes[jj].leftchild
-                jj_rightchild = nodes[jj].rightchild
 
                 # change indices of node jj to node from better topology
                 nodes[jj].parent = best_top[0][0].parent
-                nodes[jj].leftchild = best_top[0][0].leftchild
-                nodes[jj].rightchild = best_top[0][0].rightchild
 
                 # find the node from the better topology and change indices to the ones from jj
                 nodes[best_top[0][0].index].parent = jj_parent
-                nodes[best_top[0][0].index].leftchild = jj_leftchild
-                nodes[best_top[0][0].index].rightchild = jj_rightchild
 
                 # swap indices
                 nodes[jj].index = best_top[0][0].index
@@ -612,18 +564,12 @@ def NNI(nodes):
             elif kk != best_top[0][1].index:
                 # save indices of node kk
                 kk_parent = nodes[kk].parent
-                kk_leftchild = nodes[kk].leftchild
-                kk_rightchild = nodes[kk].rightchild
 
                 # change indices of node kk to node from better topology
                 nodes[kk].parent = best_top[0][1].parent
-                nodes[kk].leftchild = best_top[0][1].leftchild
-                nodes[kk].rightchild = best_top[0][1].rightchild
 
                 # find the node from the better topology and change indices to the ones from kk
                 nodes[best_top[0][1].index].parent = kk_parent
-                nodes[best_top[0][1].index].leftchild = kk_leftchild
-                nodes[best_top[0][1].index].rightchild = kk_rightchild
 
                 # swap indices
                 nodes[kk].index = best_top[0][1].index
@@ -636,6 +582,11 @@ def NNI(nodes):
 
                 print("swapped nodes", nodes[jj].index, nodes[kk].index, nodes[rr].index, nodes[ss].index)
 
+        # Recompute profiles of internal nodes
+        for node in nodes:
+            if node.leaf:  # skip all leaf nodes
+                continue
+            node.profile = averageProfile([nodes[node.leftchild], nodes[node.rightchild]])
     # best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
     # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
 
@@ -656,8 +607,8 @@ def MinimizedEvolution(n1, n2, n3, n4):
 
     # All possible topologies involving these nodes
     option1 = [[n1, n2], [n3, n4]]
-    option2 = [[n1, n4], [n3, n2]]
-    option3 = [[n4, n2], [n3, n1]]
+    option2 = [[n1, n3], [n2, n4]]
+    option3 = [[n3, n2], [n1, n4]]
     options = [option1, option2, option3]
 
     # Calculate the evolution criterion for each possible topology
