@@ -34,47 +34,74 @@ def fast_tree(sequences) -> str:
     # Actual first step : Unique sequences ( page 1646, do later )
 
     # Step 1 of algorithm : Create total profile T
-    T = Profile(nodes)  # <----------------------------------------------------------------- why are we doing this??
+    T = update_T(nodes)  # <----------------------------------------------------------------- why are we doing this??
     # print("Total profile T")
     # pp.pprint(T)
 
     # Step 2 : Top hits sequence
     # Skip for now
-
+    lambda1 = 0.4
     # Step 3 : Create initial topology
-    CreateInitialTopology(nodes, T)
+    CreateInitialTopology(nodes, T, lambda1)
     print("Initial topology is created:")
     # PrintNewick(nodes)
 
     # Step 4 : Nearest Neighbor Interchanges
-    NNI(nodes)
+    NNI(nodes, lambda1)
     print("NNI is finished:")
 
     # Final step: print tree topology as Newick string
     PrintNewick(nodes)
 
-def Profile(nodes: list) -> list:
-    """Calculate Profile of internal nodes
+# def Profile(nodes: list) -> list:
+#     """Calculate Profile of internal nodes
     
-        internalNodes (list): The sequences of internal nodes
-    Args:
-    Returns:
-        Profile (list): the profile matrix containing ratios 
-    """
-    sequences = []
-    for node in nodes:
-        sequences.append(node.sequence)
-    columns = [''.join(seq) for seq in zip(*sequences)]
-    return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
+#         internalNodes (list): The sequences of internal nodes
+#     Args:
+#     Returns:
+#         Profile (list): the profile matrix containing ratios 
+#     """
+#     sequences = []
+#     for node in nodes:
+#         sequences.append(node.sequence)
+#     columns = [''.join(seq) for seq in zip(*sequences)]
+#     return [[float(col.count(base)) / float(len(col)) for base in 'ACGT'] for col in columns]
 
-def averageProfile(nodes: list) ->  list:
+def update_T(nodes: list) -> list:
+    """
+    Updating total profile T with current list of nodes. The total profile T is the average profile over all active nodes. 
+    When we do a join, we also need to update the total profile 
+    
+    Args:
+        nodes (list): list containing all nodes
+    Returns: 
+        T (list): Total profile T 
+    """
+    all_profiles = []
+    for node in nodes:
+        if node.active:
+            all_profiles.append(node.profile)
+
+    # print(all_profiles)
+    # print("")
+    T = []
+    for n in range(len(all_profiles[0])): #loop over length of string
+        Tx = [0,0,0,0]
+        for x in range(len(all_profiles)): #loop over #active nodes in list
+            for y in range(4):
+                Tx[y] += all_profiles[x][n][y]
+                if x == len(all_profiles) - 1: #if last node is added divide by #active nodes
+                    Tx[y] = Tx[y] / len(all_profiles)
+        T.append(Tx)
+    return T
+
+def averageProfile(nodes: list, lambda1: float) ->  list:
     '''Calculates the average of profiles of internal nodes
 
         profiles of internalNodes (list): The profiles of internal nodes
     Returns:
         Average profile (list): the profile matrix containing average of two profiles
     '''
-    lambda1 = 0.5
     p1 = nodes[0].profile
     p2 = nodes[1].profile
     ptotal = []
@@ -86,7 +113,7 @@ def averageProfile(nodes: list) ->  list:
     return ptotal
 
 
-def profileDistanceNodes(nodes: list, indices: list):
+def profileDistanceNodes(nodes: list, indices: list, lambda1: float):
     '''indices [i, j, k]
     ∆(ij, k) = λ∆(i, k) + (1 − λ)∆(j, k)
     profile of parent after joining i and j
@@ -97,8 +124,7 @@ def profileDistanceNodes(nodes: list, indices: list):
     returns:
         Profile distance between joined nodes and other nodes
     '''
-    lamb = 0.5
-    profDist = lamb * (profileDistanceNew([nodes[indices[0]].profile, nodes[indices[2]].profile ])) + (1-lamb) * (profileDistanceNew([nodes[indices[1]].profile, nodes[indices[2]].profile ]))
+    profDist = lambda1 * (profileDistanceNew([nodes[indices[0]].profile, nodes[indices[2]].profile ])) + (1-lambda1) * (profileDistanceNew([nodes[indices[1]].profile, nodes[indices[2]].profile ]))
     return profDist
 
 def profileDistanceNew(profiles:list) -> float: 
@@ -111,17 +137,14 @@ def profileDistanceNew(profiles:list) -> float:
         profile distance ∆(i, j)
     '''
     value = 0
-    for L in range(len(profiles)):
+    for L in range(len(profiles[0])):
         for a in range(4):
-
             for b in range(4):
-                
-                if profiles[0][L][a] > 0 and profiles[1][L][b] > 0:
+                if profiles[0][L][a] > 0 and profiles[1][L][a] > 0:
                     P = 0
                 else:
                     P = 1
-                value += profiles[0][L][a] * profiles[1][L][b] * P
-                
+                value += profiles[0][L][a] * profiles[1][L][b] * P           
     
     return value / len(profiles)
             
@@ -150,10 +173,9 @@ def findAllKids(nodes:list, nodeIndex: int) -> list:
             tempKids.append(left)
             kids.append(left)           
         if len(tempKids) == 0: #if no queue left
-            # print(kids)
             return kids
         
-def uncorDistance(nodes: list, join: list):
+def uncorDistance(nodes: list, join: list, lambda1: float):
     '''uncorrected distance between joined nodes (node_ij) and other nodes (node_k)
     du(ij, k) = ∆(ij, k) − u(ij) − u(k)
     args;
@@ -169,7 +191,7 @@ def uncorDistance(nodes: list, join: list):
         return del_ij
     if len(join) == 3:
         indices = [join[0], join[1], join[2].index]
-        del_ijk = profileDistanceNodes(nodes, indices)
+        del_ijk = profileDistanceNodes(nodes, indices, lambda1)
         u_ij = updistance(nodes, [indices[0], indices[1]])
         u_k = updistance(nodes, [indices[2]])
         du_ijk = del_ijk - u_ij - u_k
@@ -221,8 +243,17 @@ def outDistanceNew(i: Node, nodes: list, T: list) -> float:
         return sum_du_ij
     return sum_du_ij / (N_active_nodes - 2)
 
-def minimize_nj_criterion(nodes, index, T):
+def minimize_nj_criterion(nodes: list, index: int, T: list, lambda1: float) -> list & Node:
     """Returns i,j for which d(i, j) - r(i) -r(j) is minimal and corresponding new node of merging i,j
+    
+    Args:
+        nodes (list): list containing all nodes
+        index (int): index of new node 
+        T (list): Total profile
+        lambda1 (float): lambda value BIONJ   
+    Returns:
+        best_joins (list): list containing the joined node objects
+        new_node (Node): Node object of the new node
     """
     active_nodes = []
     for node in nodes:
@@ -235,15 +266,16 @@ def minimize_nj_criterion(nodes, index, T):
         for j in active_nodes:
             if i == j:
                 continue
-            temp_profile_new_node = averageProfile([i, j]) #calculates profile of potential merge
+            temp_profile_new_node = averageProfile([i, j], lambda1) #calculates profile of potential merge
+            T = update_T(nodes)
             if i.leaf == True and j.leaf == True:
-                criterion = uncorDistance(nodes, [i, j]) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
+                criterion = uncorDistance(nodes, [i, j], lambda1) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
             elif i.leaf == True:
-                criterion = uncorDistance(nodes, [j.leftchild, j.rightchild, i]) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
+                criterion = uncorDistance(nodes, [j.leftchild, j.rightchild, i], lambda1) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
             elif j.leaf == True:
-                criterion = uncorDistance(nodes, [i.leftchild, i.rightchild, j]) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
+                criterion = uncorDistance(nodes, [i.leftchild, i.rightchild, j], lambda1) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
             else:
-                criterion = uncorDistance(nodes, [i.leftchild, i.rightchild, j]) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
+                criterion = uncorDistance(nodes, [i.leftchild, i.rightchild, j], lambda1) - outDistanceNew(i, nodes, T) - outDistanceNew(j, nodes, T)
            
             if criterion < min_dist: #if best join for now
                 profile_new_node = temp_profile_new_node #sets profile of new node to profile of best join
@@ -263,15 +295,26 @@ def minimize_nj_criterion(nodes, index, T):
     return best_join, new_node
 
 
-def CreateInitialTopology(nodes, T):
+def CreateInitialTopology(nodes: list, T: list, lambda1: float):
+    '''
+    Create the initial topology given a list with all input nodes. 
+
+    Args:
+        nodes (list): list containing all input nodes
+        T (list): Total profile
+        lambda1 (float): lambda value BIONJ 
+    
+
+    '''
+
     numberLeaf = len(nodes)
     for i in range(numberLeaf - 1):
-        minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes), T)
+        minimized_join, new_node = minimize_nj_criterion(nodes, len(nodes), T, lambda1)
         # make joined nodes inactive
         nodes[int(minimized_join[1].index)].active = False
         nodes[int(minimized_join[0].index)].active = False
         # append the newly joined node to list of nodes 
-        BranchLength(minimized_join, numberLeaf, nodes, new_node)
+        BranchLength(minimized_join, numberLeaf, nodes, lambda1)
         nodes.append(new_node)
    
 def JC_distance(d_u: float) -> float:
@@ -310,32 +353,45 @@ def JC_distance(d_u: float) -> float:
     return jd_d
 
 
-def BranchLength(minimized_join, numberLeaf, nodes, new_node):
+def BranchLength(minimized_join: list, numberLeaf: int, nodes: list, lambda1: float):
+    """Compute Branch lengths for each node 
+    
+    Args:
+        minimized_join (list): containing the just joined nodes
+        numberLeaf (int): total number of leafs (e.g. number of input nodes)
+        nodes (list): all nodes including joined ones
+        lambda1 (float): lambda value BIONJ 
+    """
+
     n1 = minimized_join[0].index
     n2 = minimized_join[1].index
-    if n1 < numberLeaf and n2 < numberLeaf:      #connect single leaf with other single leaf
-        fraction = uncorDistance(nodes, [nodes[n1], nodes[n2]])
+    #connect single leaf with other single leaf
+    if n1 < numberLeaf and n2 < numberLeaf:      
+        fraction = uncorDistance(nodes, [nodes[n1], nodes[n2]], lambda1)
         nodes[n1].branchlength = JC_distance(fraction)
         nodes[n2].branchlength = JC_distance(fraction)
-    elif n1 < numberLeaf and n2 >= numberLeaf:    #connect single leaf with other branch
-        d12 = uncorDistance(nodes, [nodes[n1], nodes[nodes[n2].leftchild]])
-        d13 = uncorDistance(nodes, [nodes[n1], nodes[nodes[n2].rightchild]])
-        d23 = uncorDistance(nodes, [nodes[nodes[n2].leftchild], nodes[nodes[n2].rightchild]])
+    #connect single leaf with other branch
+    elif n1 < numberLeaf and n2 >= numberLeaf:    
+        d12 = uncorDistance(nodes, [nodes[n1], nodes[nodes[n2].leftchild]], lambda1)
+        d13 = uncorDistance(nodes, [nodes[n1], nodes[nodes[n2].rightchild]], lambda1)
+        d23 = uncorDistance(nodes, [nodes[nodes[n2].leftchild], nodes[nodes[n2].rightchild]], lambda1)
         nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
         nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
-    elif n2 < numberLeaf and n1 >= numberLeaf:    #connect single leaf with other branch
-        d12 = uncorDistance(nodes, [nodes[n2], nodes[nodes[n1].leftchild]])
-        d13 = uncorDistance(nodes, [nodes[n2], nodes[nodes[n1].rightchild]])
-        d23 = uncorDistance(nodes, [nodes[nodes[n2].leftchild], nodes[nodes[n2].rightchild]])
+    #connect single leaf with other branch
+    elif n2 < numberLeaf and n1 >= numberLeaf:    
+        d12 = uncorDistance(nodes, [nodes[n2], nodes[nodes[n1].leftchild]], lambda1)
+        d13 = uncorDistance(nodes, [nodes[n2], nodes[nodes[n1].rightchild]], lambda1)
+        d23 = uncorDistance(nodes, [nodes[nodes[n2].leftchild], nodes[nodes[n2].rightchild]], lambda1)
         nodes[n1].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
         nodes[n2].branchlength = (JC_distance(d12) + JC_distance(d13) - JC_distance(d23))/2
-    else:                                          #connect two branches
-        d13 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n2].leftchild]])
-        d14 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n2].rightchild]])
-        d23 = uncorDistance(nodes, [nodes[nodes[n1].rightchild],nodes[nodes[n2].leftchild]])
-        d24 = uncorDistance(nodes, [nodes[nodes[n1].rightchild],nodes[nodes[n2].rightchild]])
-        d12 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n1].rightchild]])
-        d34 = uncorDistance(nodes, [nodes[nodes[n2].leftchild],nodes[nodes[n2].rightchild]])
+    #connect two branches
+    else:                                          
+        d13 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n2].leftchild]], lambda1)
+        d14 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n2].rightchild]], lambda1)
+        d23 = uncorDistance(nodes, [nodes[nodes[n1].rightchild],nodes[nodes[n2].leftchild]], lambda1)
+        d24 = uncorDistance(nodes, [nodes[nodes[n1].rightchild],nodes[nodes[n2].rightchild]], lambda1)
+        d12 = uncorDistance(nodes, [nodes[nodes[n1].leftchild],nodes[nodes[n1].rightchild]], lambda1)
+        d34 = uncorDistance(nodes, [nodes[nodes[n2].leftchild],nodes[nodes[n2].rightchild]], lambda1)
         nodes[n1].branchlength = (JC_distance(d13) + JC_distance(d14) + JC_distance(d23) + JC_distance(d24))/4 - (JC_distance(d12) + JC_distance(d34))/2
         nodes[n2].branchlength = (JC_distance(d13) + JC_distance(d14) + JC_distance(d23) + JC_distance(d24))/4 - (JC_distance(d12) + JC_distance(d34))/2
 
@@ -381,7 +437,7 @@ def PrintNewick(nodes: list):
     print('\nNewick string:', newick_str)
 
 
-def NNI(nodes):
+def NNI(nodes, lambda1: float):
     print('start NNI')
     nn = sum([node.leaf for node in nodes])  # number of leaf nodes = number of unique sequences
 
@@ -421,17 +477,22 @@ def NNI(nodes):
             else:
                 # node ii is fixed together with its parent jj
                 jj = node.parent
+                
 
             # get the indices of the nodes that can be swapped
             aa = node.leftchild         # child of original node
             bb = node.rightchild        # child of original node
             cc = nodes[jj].rightchild   # child of second fixed node (jj)
             dd = nodes[jj].parent       # parent of the second fixed node (jj)
-
+            # print(aa, bb, cc, dd)
+            # print(jj)
+            # print(node.index)
+            # print(nodes[jj].leftchild)
+            # error because index of node is equal to index of parent -> it seems like something goes wrong with indices after swapping
             print('NNI compares', nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
             # For each possible combination of fixed nodes, find the best topology
-            best_top = MinimizedEvolution(nodes[aa], nodes[bb], nodes[cc], nodes[dd], nodes)
+            best_top = MinimizedEvolution(nodes[aa], nodes[bb], nodes[cc], nodes[dd], nodes, lambda1)
             print('NNI best topology', best_top[0][0].index, best_top[0][1].index, best_top[1][0].index,
                   best_top[1][1].index)
 
@@ -461,7 +522,7 @@ def NNI(nodes):
                 nodes[aa] = nodes[best_top[0][0].index]
                 nodes[best_top[0][0].index] = node_aa
 
-                print("swapped nodes", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
+                print("swapped nodes1", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
             elif bb != best_top[0][1].index:
                 # save indices of node kk
@@ -482,20 +543,20 @@ def NNI(nodes):
                 nodes[bb] = nodes[best_top[0][1].index]
                 nodes[best_top[0][1].index] = node_bb
 
-                print("swapped nodes", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
+                print("swapped nodes2", nodes[aa].index, nodes[bb].index, nodes[cc].index, nodes[dd].index)
 
         # Recompute profiles of internal nodes
         for node in nodes:
             if node.leaf:  # skip all leaf nodes
                 continue
-            node.profile = averageProfile([nodes[node.leftchild], nodes[node.rightchild]])
+            node.profile = averageProfile([nodes[node.leftchild], nodes[node.rightchild]], lambda1)
     # best_top = MinimizedEvolution(nodes[0], nodes[1], nodes[8], nodes[11])
     # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
 
     return nodes
 
 
-def MinimizedEvolution(n1, n2, n3, n4, nodes):
+def MinimizedEvolution(n1, n2, n3, n4, nodes, lambda1: float):
     """ Evaluate all possible topologies with four nodes surrounding two fixed nodes
     and find the topology that minimizes the evolution citerion.
 
@@ -516,9 +577,36 @@ def MinimizedEvolution(n1, n2, n3, n4, nodes):
     # Calculate the evolution criterion for each possible topology
     dist_options = []
     for ii in range(len(options)):
-        dist_a = JC_distance(uncorDistance(nodes, [options[ii][0][0], options[ii][0][1]]))
-        dist_b = JC_distance(uncorDistance(nodes, [options[ii][1][0], options[ii][1][1]]))
-        print(uncorDistance(nodes, [options[ii][0][0], options[ii][0][1]]))
+        dist_a = JC_distance(uncorDistance(nodes, [options[ii][0][0], options[ii][0][1]], lambda1))
+        dist_b = JC_distance(uncorDistance(nodes, [options[ii][1][0], options[ii][1][1]], lambda1))
+        # print(uncorDistance(nodes, [options[ii][0][0], options[ii][0][1]], lambda1))
+        # if ii == 0:
+        #     join = [options[ii][0][0], options[ii][0][1]]
+        #     indices = [join[0].index, join[1].index]
+        #     print(nodes[indices[0]].profile)
+        #     print( nodes[indices[1]].profile)
+        #     profiles = [nodes[indices[0]].profile, nodes[indices[1]].profile]
+        #     value = 0
+        #     for L in range(len(profiles)):
+        #         for a in range(4):
+        #             for b in range(4):
+        #                 if profiles[0][L][a] > 0 and profiles[1][L][a] > 0:
+        #                     P = 0
+        #                 else:
+        #                     P = 1
+                        
+        #                 print(profiles[0][L])
+        #                 value += profiles[0][L][a] * profiles[1][L][b] * P   
+        #             print(value)        
+            
+        #     print(value / len(profiles))
+
+
+
+        #     del_ij = profileDistanceNew([nodes[indices[0]].profile, nodes[indices[1]].profile])
+        #     print(del_ij)
+   
+        # print(dist_a)
         dist_options.append(dist_a + dist_b)
         # print(uncorDistance([options[ii][0][0].profile, options[ii][0][1].profile]))
         # print(uncorDistance([options[ii][1][0].profile, options[ii][1][1].profile]))
