@@ -88,7 +88,7 @@ def fast_nj_best_joins(ft: Tree) -> None:
                 if i.index == j.index:
                     continue
 
-                criterion = uncorrected_distance(ft, [i, j]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+                criterion = uncorrected_distance(ft, [i, j]) - out_distance(ft, i) - out_distance(ft, j)
 
                 if criterion < best_join[0]:  # if best join for now
                     best_join = (criterion, j.index)
@@ -165,7 +165,29 @@ def average_profile(nodes: list, lambda1: float) -> list:
     return ptotal
 
 
-def profile_distance_new(profiles: list) -> float:
+# def profile_distance(profiles: list) -> float:
+#     """Calculates “profile distance” that is the average distance between profile characters over all positions
+    
+#     input: 
+#         list of profiles of which you want to calculate profile distance (i,j)
+    
+#     returns:
+#         profile distance ∆(i, j)
+#     """
+#     value = 0
+#     for L in range(len(profiles[0])):
+#         for a in range(4):
+#             for b in range(4):
+                
+#                 if profiles[0][L][a] > 0 and profiles[1][L][b] > 0:
+#                     P = 0
+                    
+#                 else:
+#                     P = 1
+#                 value += profiles[0][L][a] * profiles[1][L][b] * P
+    
+#     return value / len(profiles)
+def profile_distance(profiles: list) -> float:
     """Calculates “profile distance” that is the average distance between profile characters over all positions
     
     input: 
@@ -178,13 +200,14 @@ def profile_distance_new(profiles: list) -> float:
     for L in range(len(profiles[0])):
         for a in range(4):
             for b in range(4):
-                if profiles[0][L][a] > 0 and profiles[1][L][a] > 0:
+                
+                if a == b and profiles[0][L][a] > 0 and profiles[1][L][b] > 0:
                     P = 0
                 else:
                     P = 1
                 value += profiles[0][L][a] * profiles[1][L][b] * P
-
-    return value / len(profiles)
+    
+    return value / len(profiles[0])
 
 
 def findAllKids(nodes: list, nodeIndex: int) -> list:
@@ -226,7 +249,7 @@ def uncorrected_distance(ft: Tree, join: list):
     if len(join) == 2:
         indices = [join[0].index, join[1].index]
         # du(i, j) = ∆(i, j)−u(i)−u(j), where u(i) = 0 and u(j) = 0 as i and j are leaves
-        del_ij = profile_distance_new([ft.nodes[indices[0]].profile, ft.nodes[indices[1]].profile])
+        del_ij = profile_distance([ft.nodes[indices[0]].profile, ft.nodes[indices[1]].profile])
         return del_ij
     if len(join) == 3:
         indices = [join[0], join[1], join[2].index]
@@ -250,15 +273,15 @@ def updistance(nodes: list, ijk: list):
         updistance u(ij) or u(k) 
     '''
     if len(ijk) > 1:
-        return profile_distance_new([nodes[ijk[0]].profile, nodes[ijk[1]].profile]) / 2
+        return profile_distance([nodes[ijk[0]].profile, nodes[ijk[1]].profile]) / 2
     elif nodes[ijk[0]].leaf == True:
         return 0
     else:
-        return profile_distance_new(
+        return profile_distance(
             [nodes[nodes[ijk[0]].rightchild].profile, nodes[nodes[ijk[0]].leftchild].profile]) / 2
 
 
-def out_distance_new(ft: Tree, i: Node) -> float:
+def out_distance(ft: Tree, i: Node) -> float:
     """The average profile distance between a node and all other
        nodes can be inferred from the total profile T: r(i) = (n∆(i, T) − ∆(i, i) − (n − 1)u(i) + u(i) − sum u(j))/(n-2)
         
@@ -280,14 +303,14 @@ def out_distance_new(ft: Tree, i: Node) -> float:
 
     # ∆(i, i) is the average distance between children of i, including self-comparisons.
     if i.leaf == True:
-        d_ii = profile_distance_new([i.profile, i.profile]) # is always 0 I think but ok
-        
+        # d_ii = profile_distance([i.profile, i.profile]) # is always 0 but ok
+        d_ii = 0
     else:
-        d_ii = profile_distance_new([ft.nodes[i.rightchild].profile, ft.nodes[i.leftchild].profile])
-        # print('out_dist', d_ii)
-    # d_ii = profile_distance_new([i.profile, i.profile])
+        d_ii = profile_distance([ft.nodes[i.rightchild].profile, ft.nodes[i.leftchild].profile])
+    # d_ii = profile_distance([i.profile, i.profile])
 
-    n_iT = N_active_nodes * profile_distance_new([i.profile, ft.T])
+    n_iT = N_active_nodes * profile_distance([i.profile, ft.T])
+
     n_u_i = (N_active_nodes - 1) * updistance(ft.nodes, [i.index])
     u_i = updistance(ft.nodes, [i.index])
 
@@ -312,10 +335,98 @@ def profile_distance_nodes(ft: Tree, indices: list) -> float:
         """
 
     profile_dist = ft.lambda1 * \
-                   (profile_distance_new([ft.nodes[indices[0]].profile, ft.nodes[indices[2]].profile])) + \
+                   (profile_distance([ft.nodes[indices[0]].profile, ft.nodes[indices[2]].profile])) + \
                    (1 - ft.lambda1) * \
-                   (profile_distance_new([ft.nodes[indices[1]].profile, ft.nodes[indices[2]].profile]))
+                   (profile_distance([ft.nodes[indices[1]].profile, ft.nodes[indices[2]].profile]))
     return profile_dist
+
+def update_lambda(ft: Tree, join: list):
+    ''' calculate a new lambda value to minimize the variance of the distance estimates for the new node ij,
+        using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
+
+    Args:
+        tree object
+        list with nodes which are just joined
+    
+    '''
+    #Check if joined nodes have children
+    i = join[0]
+    j = join[1]
+    if i.leaf and j.leaf:
+        join = [i, j]
+    elif i.leaf:
+        join = [ft.nodes[j.leftchild], ft.nodes[j.rightchild], i]
+    elif j.leaf:
+        join = [ft.nodes[i.leftchild], ft.nodes[i.rightchild], j]
+    else:
+        join = [ft.nodes[i.leftchild], ft.nodes[i.rightchild], j]
+        
+    #calculate variance of nodes including internal nodes (children)
+    V_ij = variance(ft, join)
+
+    #count number of active nodes
+    N_active = 1
+    for j in ft.nodes:
+        if j.name == join[0] or j.name == join[1]:
+            continue
+        if not j.active:
+            continue
+        N_active += 1
+    
+    # Given these variances, BIONJ weights the join of i, j so as to minimize the variance of the distance estimates for the new node ij, using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
+    # FT computes the numerator with (n − 2)(ν(i) − ν(j)) + (j, k) − (i, k) see outdistance for calculation of sums using T
+    sumV = (N_active - 2) * (variance_correcion(ft, [join[1]]) - variance_correcion(ft, [join[0]])) + N_active * profile_distance([join[0].profile, ft.T]) - N_active * profile_distance([join[1].profile, ft.T])
+    new_lambda = 0.5 + abs(sumV) / (2 * (N_active - 2) * V_ij)
+
+    #update lambda
+    ft.lambda1 = new_lambda 
+    
+    
+
+def variance_correcion(ft: Tree, ij):
+    ''' calculate variance correction with formula's:
+            v(ij) ≡ ∆(i, j)/2 
+            v(k) has kids so look at leftchild and rightchild so becomes v(k_leftchild, k_rightchild)
+            v(k) = o for leaves
+
+    Args:
+        tree object
+        list with nodes for which the variance correction should be calculated (could have a length of 1 or 2 depending on v(ij) or v(k))
+    returns:
+        variance correction v(ij) or v(k) 
+    '''
+    if len(ij) > 1:
+        return profile_distance([ij[0].profile, ij[1].profile]) 
+    elif ij[0].leaf == True:
+        return 0
+    else:
+        return profile_distance(
+            [ft.nodes[ij[0].rightchild].profile, ft.nodes[ij[0].leftchild].profile]) 
+
+
+def variance(ft: Tree, join: list):
+    """Variance between nodes is given by V (i, j) = ∆(i, j) − ν(i) − ν(j)
+
+    args:
+        tree object
+        list containing nodes which are joined
+
+    returns:
+        Variance V_ij
+    """
+
+    if len(join) == 2:
+        # indices = [join[0].index, join[1].index]
+        V_ij = profile_distance([join[0].profile, join[1].profile])
+        return V_ij
+    
+    if len(join) == 3:
+        indices = [join[0].index, join[1].index, join[2].index]
+        del_ij = profile_distance_nodes(ft, indices)
+        u_i = variance_correcion(ft, [join[0], join[1]])
+        u_j = variance_correcion(ft, [join[2]])
+        V_ij = del_ij - u_i - u_j
+        return V_ij
 
 
 def minimize_nj_criterion(ft: Tree, index: int) -> Tuple[tuple, Node]:
@@ -342,13 +453,13 @@ def minimize_nj_criterion(ft: Tree, index: int) -> Tuple[tuple, Node]:
             temp_profile_new_node = average_profile([i, j], ft.lambda1)  # calculates profile of potential merge
             ft.update_T()
             if i.leaf and j.leaf:
-                criterion = uncorrected_distance(ft, [i, j]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+                criterion = uncorrected_distance(ft, [i, j]) - out_distance(ft, i) - out_distance(ft, j)
             elif i.leaf:
-                criterion = uncorrected_distance(ft, [j.leftchild, j.rightchild, i]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+                criterion = uncorrected_distance(ft, [j.leftchild, j.rightchild, i]) - out_distance(ft, i) - out_distance(ft, j)
             elif j.leaf:
-                criterion = uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+                criterion = uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - out_distance(ft, i) - out_distance(ft, j)
             else:
-                criterion = uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+                criterion = uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - out_distance(ft, i) - out_distance(ft, j)
 
             if criterion < min_dist:  # if best join for now
                 profile_new_node = temp_profile_new_node  # sets profile of new node to profile of best join
@@ -379,6 +490,8 @@ def create_join(ft: Tree, minimized_join, new_node):
 
 
     """
+    # calculate BIONJ weights of join  with the number of active nodes before the join takes place
+    update_lambda(ft, minimized_join)
     # make joined nodes inactive
     ft.nodes[int(minimized_join[1].index)].active = False
     ft.nodes[int(minimized_join[0].index)].active = False
@@ -393,6 +506,8 @@ def create_join(ft: Tree, minimized_join, new_node):
         print("Merged nodes to: " + new_node.name)
         print("left child: " + str(ft.nodes[len(ft.nodes) - 1].leftchild))
         print("right child: " + str(ft.nodes[len(ft.nodes) - 1].rightchild))
+
+    
 
     # Recalculate total profile T
     # When we do a join, we also need to update the total profile (the average over all active nodes). To
@@ -449,7 +564,7 @@ def CreateInitialTopology(ft: Tree) -> list:
             i = ft.nodes[candidate[0]]
             j = ft.nodes[candidate[1]]
 
-            criterion = uncorrected_distance(ft, [i, j]) - out_distance_new(ft, i) - out_distance_new(ft, j)
+            criterion = uncorrected_distance(ft, [i, j]) - out_distance(ft, i) - out_distance(ft, j)
 
             if criterion < min_dist:  # if best join for now
                 best_candidate = candidate
