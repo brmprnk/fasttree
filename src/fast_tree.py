@@ -277,10 +277,22 @@ def out_distance_new(ft: Tree, i: Node) -> float:
             continue
         N_active_nodes += 1
         sumJ += updistance(ft.nodes, [j.index])
-    # !!!!!!!!!! ∆(i, i) snap ik niet
-    sum_du_ij = N_active_nodes * profile_distance_new([i.profile, ft.T]) - profile_distance_new(
-        [i.profile, i.profile]) - (
-                        N_active_nodes - 1) * updistance(ft.nodes, [i.index]) + updistance(ft.nodes, [i.index]) - sumJ
+
+    # ∆(i, i) is the average distance between children of i, including self-comparisons.
+    if i.leaf == True:
+        d_ii = profile_distance_new([i.profile, i.profile]) # is always 0 I think but ok
+        
+    else:
+        d_ii = profile_distance_new([ft.nodes[i.rightchild].profile, ft.nodes[i.leftchild].profile])
+        # print('out_dist', d_ii)
+    # d_ii = profile_distance_new([i.profile, i.profile])
+
+    n_iT = N_active_nodes * profile_distance_new([i.profile, ft.T])
+    n_u_i = (N_active_nodes - 1) * updistance(ft.nodes, [i.index])
+    u_i = updistance(ft.nodes, [i.index])
+
+    #(n∆(i, T) − ∆(i, i) − (n − 1)u(i) + u(i) − sum u(j))
+    sum_du_ij = n_iT - d_ii - n_u_i + u_i - sumJ
     if N_active_nodes == 2:
         return sum_du_ij
     return sum_du_ij / (N_active_nodes - 2)
@@ -600,10 +612,7 @@ def NNI(ft: Tree):
             bb = node.rightchild  # child of original node
             cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
             dd = ft.nodes[jj].parent  # parent of the second fixed node (jj)
-            # print(aa, bb, cc, dd)
-            # print(jj)
-            # print(node.index)
-            # print(nodes[jj].leftchild)
+
             # error because index of node is equal to index of parent -> it seems like something goes wrong with indices after swapping
             print('NNI compares', ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
 
@@ -695,35 +704,7 @@ def MinimizedEvolution(ft: Tree, n1, n2, n3, n4):
     for ii in range(len(options)):
         dist_a = JC_distance(uncorrected_distance(ft, [options[ii][0][0], options[ii][0][1]]))
         dist_b = JC_distance(uncorrected_distance(ft, [options[ii][1][0], options[ii][1][1]]))
-        # print(uncorrected_distance(nodes, [options[ii][0][0], options[ii][0][1]], lambda1))
-        # if ii == 0:
-        #     join = [options[ii][0][0], options[ii][0][1]]
-        #     indices = [join[0].index, join[1].index]
-        #     print(nodes[indices[0]].profile)
-        #     print( nodes[indices[1]].profile)
-        #     profiles = [nodes[indices[0]].profile, nodes[indices[1]].profile]
-        #     value = 0
-        #     for L in range(len(profiles)):
-        #         for a in range(4):
-        #             for b in range(4):
-        #                 if profiles[0][L][a] > 0 and profiles[1][L][a] > 0:
-        #                     P = 0
-        #                 else:
-        #                     P = 1
-
-        #                 print(profiles[0][L])
-        #                 value += profiles[0][L][a] * profiles[1][L][b] * P   
-        #             print(value)        
-
-        #     print(value / len(profiles))
-
-        #     del_ij = profileDistanceNew([nodes[indices[0]].profile, nodes[indices[1]].profile])
-        #     print(del_ij)
-
-        # print(dist_a)
         dist_options.append(dist_a + dist_b)
-        # print(uncorrected_distance([options[ii][0][0].profile, options[ii][0][1].profile]))
-        # print(uncorrected_distance([options[ii][1][0].profile, options[ii][1][1].profile]))
 
     # Choose the topology with the minimized criterion
     best_topology = options[dist_options.index(min(dist_options))]
