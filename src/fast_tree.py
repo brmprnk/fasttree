@@ -731,17 +731,23 @@ def NNI(ft: Tree):
             # if jj is root node: choose right child of the root as jj, and both its children as cc and dd
             if ft.nodes[node.parent].parent is None:
                 print("exception: jj is root node")
-                jj = ft.nodes[node.parent].rightchild
+                if ft.nodes[node.parent].leftchild == node.index:
+                    jj = ft.nodes[node.parent].rightchild
+                if ft.nodes[node.parent].rightchild == node.index:
+                    jj = ft.nodes[node.parent].leftchild
                 cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
                 dd = ft.nodes[jj].leftchild  # child of second fixed node (jj)
 
             else:
                 # node ii is fixed together with its parent jj
                 jj = node.parent
-                cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
                 dd = ft.nodes[jj].parent  # parent of the second fixed node (jj)
-                print('ii', node.index)
-                print('jj', jj)
+                if ft.nodes[node.parent].leftchild == node.index:
+                    cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
+                if ft.nodes[node.parent].rightchild == node.index:
+                    cc = ft.nodes[jj].leftchild  # child of second fixed node (jj)
+            print('ii', node.index)
+            print('jj', jj)
 
             # get the indices of the nodes that can be swapped
             aa = node.leftchild  # child of original node
