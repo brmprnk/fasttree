@@ -689,47 +689,66 @@ def NNI(ft: Tree):
 
     ########
     # Manual swap to see if NNI is swapping
-    jj = 9
-    kk = 4
-    jj_parent = ft.nodes[jj].parent
-    # change indices of node jj to node from better topology
-    ft.nodes[jj].parent = ft.nodes[kk].parent
-    # find the node from the better topology and change indices to the ones from jj
-    ft.nodes[kk].parent = jj_parent
-
-    # swap indices
-    ft.nodes[jj].index = ft.nodes[kk].index
-    ft.nodes[kk].index = jj
-    # swap positions in node list
-    node_jj = ft.nodes[jj]
-    ft.nodes[jj] = ft.nodes[kk]
-    ft.nodes[kk] = node_jj
+    # jj = 9
+    # kk = 4
+    # jj_parent = ft.nodes[jj].parent
+    # # change indices of node jj to node from better topology
+    # ft.nodes[jj].parent = ft.nodes[kk].parent
+    # # find the node from the better topology and change indices to the ones from jj
+    # ft.nodes[kk].parent = jj_parent
+    #
+    # # swap indices
+    # ft.nodes[jj].index = ft.nodes[kk].index
+    # ft.nodes[kk].index = jj
+    # # swap positions in node list
+    # node_jj = ft.nodes[jj]
+    # ft.nodes[jj] = ft.nodes[kk]
+    # ft.nodes[kk] = node_jj
 
     # Repeat log2(N)+1 times
     for ii in range(round(math.log(nn, 2) + 1)):
         # Loop over all nodes
+
+        # debug
+        # print("ALL NODE CHECK")
+        # for kk, nodeee in enumerate(ft.nodes):
+        #     print('position:', kk)
+        #     print('index:', nodeee.index)
+        #     print('parent:', nodeee.parent)
+        #     print('leftchild:', nodeee.leftchild)
+        #     print('rightchild:', nodeee.rightchild)
+        # print("END ALL NODE CHECK")
+
         for node in ft.nodes:
             # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
-            # go from bottom to top
-            if node.leaf:  # skip all leaf nodes as you cannot fix them to try a new topology
+
+            # skip all leaf nodes as you cannot fix them to try a new topology
+            if node.leaf:
                 continue
-            if node.parent is None:  # skip if ii is the root node
+            # skip if ii is the root node
+            if node.parent is None:
                 continue
-            if ft.nodes[
-                node.parent].parent is None:  # if jj is root node: choose right child of the root as jj, and both its children as cc and dd
+            # if jj is root node: choose right child of the root as jj, and both its children as cc and dd
+            if ft.nodes[node.parent].parent is None:
+                print("exception: jj is root node")
                 jj = ft.nodes[node.parent].rightchild
+                cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
+                dd = ft.nodes[jj].leftchild  # child of second fixed node (jj)
+
             else:
                 # node ii is fixed together with its parent jj
                 jj = node.parent
+                cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
+                dd = ft.nodes[jj].parent  # parent of the second fixed node (jj)
+                print('ii', node.index)
+                print('jj', jj)
 
             # get the indices of the nodes that can be swapped
             aa = node.leftchild  # child of original node
             bb = node.rightchild  # child of original node
-            cc = ft.nodes[jj].rightchild  # child of second fixed node (jj)
-            dd = ft.nodes[jj].parent  # parent of the second fixed node (jj)
 
-            # error because index of node is equal to index of parent -> it seems like something goes wrong with indices after swapping
-            print('NNI compares', ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
+            print('NNI compares (aa, bb, cc, dd)', aa, bb, cc, dd)
+            print('NNI compares (index)', ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
 
             # For each possible combination of fixed nodes, find the best topology
             best_top = MinimizedEvolution(ft, ft.nodes[aa], ft.nodes[bb], ft.nodes[cc], ft.nodes[dd])
@@ -742,48 +761,110 @@ def NNI(ft: Tree):
             # ss is never switched, no need to check
             # if rr is switched, the switch is already taken care of when checking jj or kk, no need to check again
 
-            # if node was switched, switch their parents
             if aa != best_top[0][0].index:
-                # save indices of node jj
-                aa_parent = ft.nodes[aa].parent
+                # swap nodes
+                index_swap = best_top[0][0].index   # save indices of nodes that should be swapped
+                index_aa = aa
 
-                # change indices of node jj to node from better topology
-                ft.nodes[aa].parent = best_top[0][0].parent
+                parent_aa = ft.nodes[index_aa].parent  # save parent
+                parent_swap = ft.nodes[index_swap].parent
 
-                # find the node from the better topology and change indices to the ones from jj
-                ft.nodes[best_top[0][0].index].parent = aa_parent
+                node_aa = ft.nodes[index_aa]        # save nodes
+                node_swap = ft.nodes[index_swap]
 
-                # swap indices
-                ft.nodes[aa].index = best_top[0][0].index
-                ft.nodes[best_top[0][0].index].index = aa
+                node_aa.index = index_swap          # change indices to the new places they will take in the nodes array
+                node_swap.index = index_aa
 
-                # swap positions in node list
-                node_aa = ft.nodes[aa]
-                ft.nodes[aa] = ft.nodes[best_top[0][0].index]
-                ft.nodes[best_top[0][0].index] = node_aa
+                node_aa.parent = parent_swap        # change their new parents
+                node_swap.parent = parent_aa
 
-                print("swapped nodes1", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
+                #debug
+                print('aa', aa)
+                print('index_bb', index_aa)
+                print('parent_aa', parent_aa)
+                print('parent_aa.leftchild', ft.nodes[parent_aa].leftchild)
+                print('parent_aa.rightchild', ft.nodes[parent_aa].rightchild)
+
+                # change children of the parents
+                if ft.nodes[parent_aa].leftchild == index_aa:
+                    ft.nodes[parent_aa].leftchild = index_swap
+                elif ft.nodes[parent_aa].rightchild == index_aa:
+                    ft.nodes[parent_aa].rightchild = index_swap
+                else:
+                    print("Error in children swap in NNI")
+                if ft.nodes[parent_swap].leftchild == index_swap:
+                    ft.nodes[parent_swap].leftchild = index_aa
+                elif ft.nodes[parent_swap].rightchild == index_swap:
+                    ft.nodes[parent_swap].rightchild = index_aa
+                else:
+                    print("Error in children swap in NNI")
+
+                ft.nodes[index_aa] = node_swap      # change positions in the node list
+                ft.nodes[index_swap] = node_aa
+
+                print("swapped nodes1:", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
 
             elif bb != best_top[0][1].index:
-                # save indices of node kk
-                bb_parent = ft.nodes[bb].parent
+                # print('node bb is', bb)
+                # print('node bb leftchild', ft.nodes[bb].leftchild)
+                # print('node bb rightchild', ft.nodes[bb].rightchild)
+                # print('node swap is', best_top[0][1].index)
+                # print('node swap leftchild', ft.nodes[best_top[0][1].index].leftchild)
+                # print('node swap rightchild', ft.nodes[best_top[0][1].index].rightchild)
 
-                # change indices of node kk to node from better topology
-                ft.nodes[bb].parent = best_top[0][1].parent
+                # swap nodes
+                index_swap = best_top[0][1].index       # save indices of nodes that should be swapped
+                index_bb = bb
 
-                # find the node from the better topology and change indices to the ones from kk
-                ft.nodes[best_top[0][1].index].parent = bb_parent
+                parent_bb = ft.nodes[index_bb].parent   # save parent index
+                parent_swap = ft.nodes[index_swap].parent
 
-                # swap indices
-                ft.nodes[bb].index = best_top[0][1].index
-                ft.nodes[best_top[0][1].index].index = bb
+                node_bb = ft.nodes[index_bb]            # save nodes
+                node_swap = ft.nodes[index_swap]
 
-                # swap positions in node list
-                node_bb = ft.nodes[bb]
-                ft.nodes[bb] = ft.nodes[best_top[0][1].index]
-                ft.nodes[best_top[0][1].index] = node_bb
+                node_bb.index = index_swap              # change indices to the new places they will take
+                node_swap.index = index_bb
 
-                print("swapped nodes2", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
+                node_bb.parent = parent_swap            # change their new parents
+                node_swap.parent = parent_bb
+
+                #debug
+                print('bb', bb)
+                print('index_bb', index_bb)
+                print('parent_bb', parent_bb)
+                print('parent_bb.leftchild', ft.nodes[parent_bb].leftchild)
+                print('parent_bb.rightchild', ft.nodes[parent_bb].rightchild)
+
+                # change children of the parents
+                # print('children swap, check left:', ft.nodes[parent_bb].leftchild, index_bb)
+                # print('children swap, check right:', ft.nodes[parent_bb].rightchild, index_bb)
+                if ft.nodes[parent_bb].leftchild == index_bb:
+                    ft.nodes[parent_bb].leftchild = index_swap
+                elif ft.nodes[parent_bb].rightchild == index_bb:
+                    ft.nodes[parent_bb].rightchild = index_swap
+                else:
+                    print("Error in children swap in NNI")
+                if ft.nodes[parent_swap].leftchild == index_swap:
+                    ft.nodes[parent_swap].leftchild = index_bb
+                elif ft.nodes[parent_swap].rightchild == index_swap:
+                    ft.nodes[parent_swap].rightchild = index_bb
+                else:
+                    print("Error in children swap in NNI")
+
+                ft.nodes[index_bb] = node_swap  # change positions in the node list
+                ft.nodes[index_swap] = node_bb
+
+                print("swapped nodes2:", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
+
+
+            # Debug parents/children
+            # print('Check parents/children')
+            # aa = 10
+            # print('take node:', aa)
+            # par = ft.nodes[aa].parent
+            # print('its parent is:', par)
+            # print('the children of the parent are:', ft.nodes[par].leftchild, ft.nodes[par].rightchild)
+            # print('end of check')
 
         # Recompute profiles of internal nodes
         for node in ft.nodes:
@@ -792,6 +873,8 @@ def NNI(ft: Tree):
             node.profile = average_profile([ft.nodes[node.leftchild], ft.nodes[node.rightchild]], ft.lambda1)
     # best_top = MinimizedEvolution(ft, nodes[0], nodes[1], nodes[8], nodes[11])
     # print("Best topology", best_top[0][0].index, best_top[0][1].index, best_top[1][0].index, best_top[1][1].index)
+
+    print('NNI done')
 
     return ft.nodes
 

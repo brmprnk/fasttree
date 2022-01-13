@@ -73,7 +73,7 @@ class Tree:
 
         print(len(queue))
         while len(queue) > 0:
-            print('New while iteration')
+            # print('New iteration while loop')
             add_to_queue = []
             for ii in queue:
                 replace = newick_list.index(
