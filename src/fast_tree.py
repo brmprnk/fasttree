@@ -710,14 +710,14 @@ def NNI(ft: Tree):
         # Loop over all nodes
 
         # debug
-        # print("ALL NODE CHECK")
-        # for kk, nodeee in enumerate(ft.nodes):
-        #     print('position:', kk)
-        #     print('index:', nodeee.index)
-        #     print('parent:', nodeee.parent)
-        #     print('leftchild:', nodeee.leftchild)
-        #     print('rightchild:', nodeee.rightchild)
-        # print("END ALL NODE CHECK")
+        print("ALL NODE CHECK")
+        for kk, nodeee in enumerate(ft.nodes):
+            print('position:', kk)
+            print('index:', nodeee.index)
+            print('parent:', nodeee.parent)
+            print('leftchild:', nodeee.leftchild)
+            print('rightchild:', nodeee.rightchild)
+        print("END ALL NODE CHECK")
 
         for node in ft.nodes:
             # Find what other nodes it can be fixed with (and nodes that are attached to them so which ones to compare)
@@ -809,6 +809,12 @@ def NNI(ft: Tree):
                 ft.nodes[index_swap] = node_aa
 
                 print("swapped nodes1:", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
+                print('node aa is', aa)
+                print('node aa leftchild', ft.nodes[aa].leftchild)
+                print('node aa rightchild', ft.nodes[aa].rightchild)
+                print('node swap is', best_top[0][1].index)
+                print('node swap leftchild', ft.nodes[best_top[0][1].index].leftchild)
+                print('node swap rightchild', ft.nodes[best_top[0][1].index].rightchild)
 
             elif bb != best_top[0][1].index:
                 # print('node bb is', bb)
@@ -861,7 +867,12 @@ def NNI(ft: Tree):
                 ft.nodes[index_swap] = node_bb
 
                 print("swapped nodes2:", ft.nodes[aa].index, ft.nodes[bb].index, ft.nodes[cc].index, ft.nodes[dd].index)
-
+                print('node bb is', bb)
+                print('node bb leftchild', ft.nodes[bb].leftchild)
+                print('node bb rightchild', ft.nodes[bb].rightchild)
+                print('node swap is', best_top[0][1].index)
+                print('node swap leftchild', ft.nodes[best_top[0][1].index].leftchild)
+                print('node swap rightchild', ft.nodes[best_top[0][1].index].rightchild)
 
             # Debug parents/children
             # print('Check parents/children')
