@@ -32,3 +32,6 @@ class Node:
 
     def set_inactive(self):
         self.active = False
+
+    def __str__(self):
+        return "Node {} with children ({}, {}) and parent {}".format(self.index, self.leftchild, self.rightchild, self.parent)

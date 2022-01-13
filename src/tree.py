@@ -61,19 +61,14 @@ class Tree:
         Returns:
             Newick string (str): the desired format of the tree structure (newick string)
         """
-
-        print("Newick_str, ", len(self.nodes))
         # Initiate newick string with root node
         for node in self.nodes:
-            print("Node", node.index)
             if node.parent is None:
                 newick_list = ['(', node.leftchild, ',', node.rightchild, ')']
                 queue = [node.leftchild, node.rightchild]  # indices of nodes that are waiting to be replaced
         # print('Newick string initialized')
 
-        print(len(queue))
         while len(queue) > 0:
-            print('New while iteration')
             add_to_queue = []
             for ii in queue:
                 replace = newick_list.index(
@@ -89,6 +84,6 @@ class Tree:
             # print('Newick list at end of iteration', newick_list)
 
         newick_str = "".join(newick_list) + ';'
-        print('\nNewick string:', newick_str)
+        print('Newick string:', newick_str)
 
         return newick_str
