@@ -59,6 +59,8 @@ class Tree:
             The index of internal nodes (= has children) will be replaced by the index of their children.
             The index of leaf nodes (= has no children) will be replaced by the name of the leaf node.
             This results in a list with all the names of the nodes with the right hierarchy of brackets.
+            These can be joined together to form the Newick string.
+            Duplicate sequences are taken into consideration by adding
 
         Returns:
             Newick string (str): the desired format of the tree structure (newick string)
@@ -75,22 +77,23 @@ class Tree:
             for ii in queue:
                 replace = newick_list.index(ii)  # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
                 if self.nodes[ii].leaf:  # skip leaf nodes
-                    if self.nodes[ii].identical_sequences == 1:  # if only one copy of this sequence was in the alignment
+                    # if only one copy of this sequence was in the alignment
+                    if len(self.nodes[ii].identical_sequences) == 1:
                         newick_list[replace] = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength,3))  # Replace node index by it's name (this is a leaf node), and corresponding branch length
+                    # if multiple copies of this sequence were in the alignment file
                     else:
-                        nn = self.nodes[ii].identical_sequences
-                        node_replicate = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength, 3))
-                        for jj in range(nn-1):
-                            node_replicate = node_replicate + "," + str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength, 3))
-                        newick_list[replace] = node_replicate
-                else:  # If not a leaf node,
-                    newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,
-                                                        ')')  # Replace node index by the index of it's children
-                    add_to_queue.extend([self.nodes[ii].leftchild, self.nodes[ii].rightchild])
+                        copy_names = self.nodes[ii].identical_sequences     # names of all the identical sequences
+                        node_duplicates = str(copy_names[0]) + ":" + str(round(self.nodes[ii].branchlength, 3)) # initialize by first name (no comma in front)
+                        for name in copy_names[1:]:                         # add all other names (preceding by comma)
+                            node_duplicates = node_duplicates + "," + str(name) + ":" + str(round(self.nodes[ii].branchlength, 3))
+                        newick_list[replace] = node_duplicates              # replace node index by all names
+                else:  # If not a leaf node
+                    newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,')')  # Replace node index by the index of it's children
+                    add_to_queue.extend([self.nodes[ii].leftchild, self.nodes[ii].rightchild])  # add the children to the queue, they still need to be checked
                 queue.remove(ii)  # Node is checked, remove from queue
             queue.extend(add_to_queue)  # Add all new nodes in the newick list to the queue
-            # print('Newick list at end of iteration', newick_list)
 
+        # Join all names from the newick list to form one string
         newick_str = "".join(newick_list) + ';'
         print('Newick string:', newick_str)
 
