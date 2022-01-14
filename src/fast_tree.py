@@ -68,7 +68,6 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
 
     # Create initial topology
     CreateInitialTopology(ft)
-
     if ft.verbose == 1:
         print("Initial topology is created containing", len(ft.nodes), "nodes : ")
         ft.newick_str()
@@ -81,7 +80,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
 
     # Calculate branchlengths
     ft.BranchLength()
-
+    
     # Final step: print tree topology as Newick string
     return ft.newick_str()
 
@@ -108,120 +107,6 @@ def average_profile(nodes: list, lambda1: float) -> list:
     return ptotal
 
 
-def findAllKids(nodes: list, nodeIndex: int) -> list:
-    """Finds all children of input nodeIndex
-        
-        Input:
-            All nodes (list): list of all nodes
-            Index of node (int): index of node of which you want to know the children
-        
-        Returns:
-            All children (list): list with indexes of all children of specific node
-    """
-    kids = []  # list of all kids of node with index nodeIndex
-    tempKids = [nodeIndex]  # queue of list with all kids
-    while True:
-        acting = tempKids[0]
-        tempKids.remove(acting)
-        if nodes[acting].rightchild is not None:
-            right = nodes[acting].rightchild
-            tempKids.append(right)
-            kids.append(right)
-        if nodes[acting].leftchild is not None:
-            left = nodes[acting].leftchild
-            tempKids.append(left)
-            kids.append(left)
-        if len(tempKids) == 0:  # if no queue left
-            return kids
-
-
-def update_lambda(ft: Tree, join: list):
-    ''' calculate a new lambda value to minimize the variance of the distance estimates for the new node ij,
-        using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
-
-    Args:
-        tree object
-        list with nodes which are just joined
-
-    '''
-    #Check if joined nodes have children
-    i = join[0]
-    j = join[1]
-    if i.leaf and j.leaf:
-        join = [i, j]
-    elif i.leaf:
-        join = [ft.nodes[j.leftchild], ft.nodes[j.rightchild], i]
-    elif j.leaf:
-        join = [ft.nodes[i.leftchild], ft.nodes[i.rightchild], j]
-    else:
-        join = [ft.nodes[i.leftchild], ft.nodes[i.rightchild], j]
-
-    #calculate variance of nodes including internal nodes (children)
-    V_ij = variance(ft, join)
-
-    #count number of active nodes
-    N_active = 1
-    for j in ft.nodes:
-        if j.name == join[0] or j.name == join[1]:
-            continue
-        if not j.active:
-            continue
-        N_active += 1
-
-    # Given these variances, BIONJ weights the join of i, j so as to minimize the variance of the distance estimates for the new node ij, using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
-    # FT computes the numerator with (n − 2)(ν(i) − ν(j)) + (j, k) − (i, k) see outdistance for calculation of sums using T
-    sumV = (N_active - 2) * (variance_correcion(ft, [join[1]]) - variance_correcion(ft, [join[0]])) + N_active * util.profile_distance([join[0].profile, ft.T]) - N_active * util.profile_distance([join[1].profile, ft.T])
-    new_lambda = 0.5 + abs(sumV) / (2 * (N_active - 2) * V_ij)
-
-    #update lambda
-    ft.lambda1 = new_lambda
-
-
-def variance_correcion(ft: Tree, ij):
-    ''' calculate variance correction with formula's:
-            v(ij) ≡ ∆(i, j)/2
-            v(k) has kids so look at leftchild and rightchild so becomes v(k_leftchild, k_rightchild)
-            v(k) = o for leaves
-
-    Args:
-        tree object
-        list with nodes for which the variance correction should be calculated (could have a length of 1 or 2 depending on v(ij) or v(k))
-    returns:
-        variance correction v(ij) or v(k)
-    '''
-    if len(ij) > 1:
-        return util.profile_distance([ij[0].profile, ij[1].profile])
-    elif ij[0].leaf:
-        return 0
-    else:
-        return util.profile_distance(
-            [ft.nodes[ij[0].rightchild].profile, ft.nodes[ij[0].leftchild].profile])
-
-
-def variance(ft: Tree, join: list):
-    """Variance between nodes is given by V (i, j) = ∆(i, j) − ν(i) − ν(j)
-
-    args:
-        tree object
-        list containing nodes which are joined
-
-    returns:
-        Variance V_ij
-    """
-
-    if len(join) == 2:
-        # indices = [join[0].index, join[1].index]
-        V_ij = util.profile_distance([join[0].profile, join[1].profile])
-        return V_ij
-
-    if len(join) == 3:
-        indices = [join[0].index, join[1].index, join[2].index]
-        del_ij = util.profile_distance_nodes(ft, indices)
-        u_i = variance_correcion(ft, [join[0], join[1]])
-        u_j = variance_correcion(ft, [join[2]])
-        V_ij = del_ij - u_i - u_j
-        return V_ij
-
 
 def create_join(ft: Tree, best_join) -> None:
     """Create a new Node and join the best two nodes under it.
@@ -234,6 +119,9 @@ def create_join(ft: Tree, best_join) -> None:
     Returns:
         None
     """
+    # calculate BIONJ weights of join  with the number of active nodes before the join takes place
+    ft.update_lambda(best_join)
+    
     # Save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
     # we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
     new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), len(ft.nodes), 'nosequence')
