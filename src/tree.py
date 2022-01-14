@@ -71,7 +71,8 @@ class Tree:
                 newick_list = ['(', node.leftchild, ',', node.rightchild, ')']
                 queue = [node.leftchild, node.rightchild]  # indices of nodes that are waiting to be replaced
         # print('Newick string initialized')
-
+        for ii in range(len(self.nodes)):
+            print(str(round(self.nodes[ii].branchlength, 3)))
         while len(queue) > 0:
             add_to_queue = []
             for ii in queue:
@@ -88,7 +89,7 @@ class Tree:
                             node_duplicates = node_duplicates + "," + str(name) + ":" + str(round(self.nodes[ii].branchlength, 3))
                         newick_list[replace] = node_duplicates              # replace node index by all names
                 else:  # If not a leaf node
-                    newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,')')  # Replace node index by the index of it's children
+                    newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,')', ":" , str(round(self.nodes[ii].branchlength, 3)) ) # Replace node index by the index of it's children
                     add_to_queue.extend([self.nodes[ii].leftchild, self.nodes[ii].rightchild])  # add the children to the queue, they still need to be checked
                 queue.remove(ii)  # Node is checked, remove from queue
             queue.extend(add_to_queue)  # Add all new nodes in the newick list to the queue
@@ -107,9 +108,49 @@ class Tree:
             
         """
         for n1 in self.nodes: 
-            if n1.leaf == True:        
-                d = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n1.parent]]) # uncorrected distance between node and parent
-                self.nodes[n1.index].branchlength = util.JC_distance(d) # append branchlength to node
+            for n2 in self.nodes:
+                if n1 == n2:
+                    continue
+                if n1.parent == n2.parent:
+                    # connect single leaf with other single leaf
+                    if n1.leaf == True  and n2.leaf == True:
+                        d1 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n1.parent]]) # uncorrected distance between leaf and parent
+                        self.nodes[n1.index].branchlength = util.JC_distance(d1) # append branchlength to node
+                        d2 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.parent]]) # uncorrected distance between second leaf and parent
+                        self.nodes[n2.index].branchlength = util.JC_distance(d2) # append branchlength to node
+                    # connect single leaf with internal node
+                    elif n1.leaf == True and n2.leaf == False:   
+                        # distance of internal node d(1,23) = (d12+d13-d23)/2 
+                        d12 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.leftchild]])
+                        d13 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.rightchild]])
+                        d23 = util.uncorrected_distance(self, [self.nodes[n2.leftchild], self.nodes[n2.rightchild]])
+                        self.nodes[n2.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                        # distance of leaf
+                        d1 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n1.parent]]) # uncorrected distance between leaf and parent
+                        self.nodes[n1.index].branchlength = util.JC_distance(d1) # append branchlength to node
+                        
+                    # connect single leaf with internal node
+                    elif n2.leaf == True and n1.leaf == False:  
+                        # distance of internal node d(1,23) = (d12+d13-d23)/2 
+                        d12 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.leftchild]])
+                        d13 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.rightchild]])
+                        d23 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n1.rightchild]])
+                        self.nodes[n1.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                        # distance of leaf
+                        d2 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.parent]]) # uncorrected distance between leaf and parent
+                        self.nodes[n2.index].branchlength = util.JC_distance(d2) # append branchlength to node
+
+                    # connect two internal nodes    
+                    elif n1.leaf == False and n2.leaf == False:
+                        # distance of two internal nodes d(12,34) = (d13+d14+d23+d24)/4 - (d12+d34)/2 
+                        d13 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n2.leftchild]])
+                        d14 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n2.rightchild]])
+                        d23 = util.uncorrected_distance(self, [self.nodes[n1.rightchild], self.nodes[n2.leftchild]])
+                        d24 = util.uncorrected_distance(self, [self.nodes[n1.rightchild], self.nodes[n2.rightchild]])
+                        d12 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n1.rightchild]])
+                        d34 = util.uncorrected_distance(self, [self.nodes[n2.leftchild], self.nodes[n2.rightchild]])
+                        self.nodes[n1.index].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(d24)) / 4 - (
+                                util.JC_distance(d12) + util.JC_distance(d34)) / 2
 
     def variance_correcion(self, ij):
         ''' calculate variance correction with formula's:
