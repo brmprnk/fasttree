@@ -54,18 +54,18 @@ def nj_criterion(ft: Tree, i: Node, j: Node) -> float:
         criterion(float)
     """
     if i.leaf and j.leaf:
-        criterion = util.uncorrected_distance(ft, [i, j]) - util.out_distance_new(ft, i) - util.out_distance_new(ft, j)
+        criterion = util.uncorrected_distance(ft, [i, j]) - util.out_distance(ft, i) - util.out_distance(ft, j)
     elif i.leaf:
-        criterion = util.uncorrected_distance(ft, [j.leftchild, j.rightchild, i]) - util.out_distance_new(ft,
-                                                                                                i) - util.out_distance_new(
+        criterion = util.uncorrected_distance(ft, [j.leftchild, j.rightchild, i]) - util.out_distance(ft,
+                                                                                                i) - util.out_distance(
             ft, j)
     elif j.leaf:
-        criterion = util.uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - util.out_distance_new(ft,
-                                                                                                i) - util.out_distance_new(
+        criterion = util.uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - util.out_distance(ft,
+                                                                                                i) - util.out_distance(
             ft, j)
     else:
-        criterion = util.uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - util.out_distance_new(ft,
-                                                                                                i) - util.out_distance_new(
+        criterion = util.uncorrected_distance(ft, [i.leftchild, i.rightchild, j]) - util.out_distance(ft,
+                                                                                                i) - util.out_distance(
             ft, j)
 
     return criterion
