@@ -363,13 +363,11 @@ def CreateInitialTopology(ft: Tree) -> None:
 
                 # Fix FastNJ references to inactive notes the "lazy" way
                 if not ft.nodes[node.best_join[1]].active:
-                    # No more top-hits means all nodes have been joined!
+                    # No more top-hits means the heuristic has served its purpose
                     if len(node.tophits.list) == 0:
-                        if ft.verbose == 1:
-                            print("Node ", node.index,
-                                  " has no top-hits. This means this was the last join!")
-                            print()
-                        return
+                        minimized_join = neighbor_joining.minimize_nj_criterion(ft)
+                        create_join(ft, minimized_join)
+                        break
 
                     heuristics.fastNJ_update(ft, node)
 
@@ -382,7 +380,10 @@ def CreateInitialTopology(ft: Tree) -> None:
             min_dist = sys.maxsize / 2
             for _ in range(ft.m):
                 if best_m_joins.empty():
-                    return
+                    if best_candidate == (0, 0):  # The candidate did not change, so we have reached the end
+                        return
+                    else:
+                        break
 
                 candidate = best_m_joins.get()[1]
 
