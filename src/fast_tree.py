@@ -363,6 +363,14 @@ def CreateInitialTopology(ft: Tree) -> None:
 
                 # Fix FastNJ references to inactive notes the "lazy" way
                 if not ft.nodes[node.best_join[1]].active:
+                    # No more top-hits means all nodes have been joined!
+                    if len(node.tophits.list) == 0:
+                        if ft.verbose == 1:
+                            print("Node ", node.index,
+                                  " has no top-hits. This means this was the last join!")
+                            print()
+                        return
+
                     heuristics.fastNJ_update(ft, node)
 
                 # Put in the best join pair (node, best_join)
@@ -373,12 +381,14 @@ def CreateInitialTopology(ft: Tree) -> None:
             best_candidate = (0, 0)  # (distance, node index)]
             min_dist = sys.maxsize / 2
             for _ in range(ft.m):
+                if best_m_joins.empty():
+                    return
+
                 candidate = best_m_joins.get()[1]
 
                 i = ft.nodes[candidate[0]]
                 j = ft.nodes[candidate[1]]
 
-                criterion = util.uncorrected_distance(ft, [i, j]) - util.out_distance(ft, i) - util.out_distance(ft, j)
                 criterion = neighbor_joining.nj_criterion(ft, i, j)
 
                 if criterion < min_dist:  # if best join for now
@@ -387,6 +397,10 @@ def CreateInitialTopology(ft: Tree) -> None:
 
             # Given this candidate join, we do a local hill-climbing search for a better join
             best_join = heuristics.local_hill_climb(ft, best_candidate, min_dist)
+
+            if ft.verbose == 1:
+                print("Best Join after heuristics is nodes ", best_join[0].index, best_join[1].index)
+                print()
 
             # Make the join
             create_join(ft, best_join)
@@ -398,7 +412,7 @@ def NNI(ft: Tree):
     nn = sum([node.leaf for node in ft.nodes])  # number of leaf nodes = number of unique sequences
 
     if ft.verbose == 1:
-        print('#nodes:', len(nodes))
+        print('#nodes:', len(ft.nodes))
         print('#rounds:', round(math.log(nn) + 1))
 
     # Repeat log2(N)+1 times
