@@ -73,9 +73,7 @@ class Tree:
             if node.parent is None:
                 newick_list = ['(', node.leftchild, ',', node.rightchild, ')']
                 queue = [node.leftchild, node.rightchild]  # indices of nodes that are waiting to be replaced
-        # print('Newick string initialized')
-        for ii in range(len(self.nodes)):
-            print(str(round(self.nodes[ii].branchlength, 3)))
+
         while len(queue) > 0:
             add_to_queue = []
             for ii in queue:
