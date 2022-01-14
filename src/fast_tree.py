@@ -73,7 +73,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     CreateInitialTopology(ft)
 
     if ft.verbose == 1:
-        print("Initial topology is created containing", len(ft.nodes), "nodes : ")
+        ("Initial topology is created containing", len(ft.nodes), "nodes : ")
         ft.newick_str()
         print()
 
