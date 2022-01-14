@@ -79,6 +79,9 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     if ft.verbose == 1:
         print("NNI is finished")
 
+    # Calculate branchlengths
+    ft.BranchLength()
+
     # Final step: print tree topology as Newick string
     return ft.newick_str()
 
@@ -245,8 +248,6 @@ def create_join(ft: Tree, best_join) -> None:
     # make joined nodes inactive
     ft.nodes[int(best_join[0].index)].active = False
     ft.nodes[int(best_join[1].index)].active = False
-
-    ft.BranchLength(best_join)
 
     # append the newly joined node to list of nodes
     ft.nodes.append(new_node)

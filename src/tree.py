@@ -76,7 +76,7 @@ class Tree:
                 replace = newick_list.index(
                     ii)  # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
                 if self.nodes[ii].leaf:  # skip leaf nodes
-                    newick_list[replace] = self.nodes[ii].name  # Replace node index by it's name (this is a leaf node)
+                    newick_list[replace] = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength,3))  # Replace node index by it's name (this is a leaf node)
                 else:  # If not a leaf node,
                     newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,
                                                         ')')  # Replace node index by the index of it's children
@@ -90,7 +90,7 @@ class Tree:
 
         return newick_str
 
-    def BranchLength(self, minimized_join: list):
+    def BranchLength(self):
         """Compute Branch lengths for each node
 
         Args:
@@ -99,38 +99,45 @@ class Tree:
         """
         nr_leafs = len(self.nodes)
 
-        n1 = minimized_join[0].index
-        n2 = minimized_join[1].index
-        # connect single leaf with other single leaf
-        if n1 < nr_leafs and n2 < nr_leafs:
-            fraction = util.uncorrected_distance(self, [self.nodes[n1], self.nodes[n2]])
-            self.nodes[n1].branchlength = util.JC_distance(fraction)
-            self.nodes[n2].branchlength = util.JC_distance(fraction)
-        # connect single leaf with other branch
-        elif n1 < nr_leafs <= n2:
-            d12 = util.uncorrected_distance(self, [self.nodes[n1], self.nodes[self.nodes[n2].leftchild]])
-            d13 = util.uncorrected_distance(self, [self.nodes[n1], self.nodes[self.nodes[n2].rightchild]])
-            d23 = util.uncorrected_distance(self, [self.nodes[self.nodes[n2].leftchild], self.nodes[self.nodes[n2].rightchild]])
-            self.nodes[n1].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-            self.nodes[n2].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-        # connect single leaf with other branch
-        elif n2 < nr_leafs <= n1:
-            d12 = util.uncorrected_distance(self, [self.nodes[n2], self.nodes[self.nodes[n1].leftchild]])
-            d13 = util.uncorrected_distance(self, [self.nodes[n2], self.nodes[self.nodes[n1].rightchild]])
-            d23 = util.uncorrected_distance(self, [self.nodes[self.nodes[n2].leftchild], self.nodes[self.nodes[n2].rightchild]])
-            self.nodes[n1].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-            self.nodes[n2].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-        # connect two branches
-        else:
-            d13 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].leftchild]])
-            d14 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].rightchild]])
-            d23 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].leftchild]])
-            d24 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].rightchild]])
-            d12 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n1].rightchild]])
-            d34 = util.uncorrected_distance(self, [self.nodes[self.nodes[n2].leftchild], self.nodes[self.nodes[n2].rightchild]])
-            self.nodes[n1].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
-                d24)) / 4 - (
-                                                util.JC_distance(d12) + util.JC_distance(d34)) / 2
-            self.nodes[n2].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
-                d24)) / 4 - (
-                                                util.JC_distance(d12) + util.JC_distance(d34)) / 2
+        for n1 in self.nodes:
+            for n2 in self.nodes:
+                if n1 == n2: #if nodes are the same
+                    continue
+                elif n1.leaf == False and n2.leaf == False: #if internal node
+                    continue
+                else:
+                    # n1 = minimized_join[0].index
+                    # n2 = minimized_join[1].index
+                    # connect single leaf with other single leaf
+                    if n1.leaf == True and n2.leaf == True:
+                        fraction = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.index]])
+                        self.nodes[n1.index].branchlength = util.JC_distance(fraction)
+                        self.nodes[n2.index].branchlength = util.JC_distance(fraction)
+                    # connect single leaf with other branch
+                    elif n1.leaf == True:
+                        d12 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.leftchild]])
+                        d13 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.rightchild]])
+                        d23 = util.uncorrected_distance(self, [self.nodes[n2.leftchild], self.nodes[n2.rightchild]])
+                        self.nodes[n1.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                        self.nodes[n2.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                    # connect single leaf with other branch
+                    elif n2.leaf == True:
+                        d12 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.leftchild]])
+                        d13 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.rightchild]])
+                        d23 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n1.rightchild]])
+                        self.nodes[n1.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                        self.nodes[n2.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
+                    # connect two branches
+                    # else:
+                    #     d13 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].leftchild]])
+                    #     d14 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].rightchild]])
+                    #     d23 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].leftchild]])
+                    #     d24 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].rightchild]])
+                    #     d12 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n1].rightchild]])
+                    #     d34 = util.uncorrected_distance(self, [self.nodes[self.nodes[n2].leftchild], self.nodes[self.nodes[n2].rightchild]])
+                    #     self.nodes[n1].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
+                    #         d24)) / 4 - (
+                    #                                         util.JC_distance(d12) + util.JC_distance(d34)) / 2
+                    #     self.nodes[n2].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
+                    #         d24)) / 4 - (
+                    #                                         util.JC_distance(d12) + util.JC_distance(d34)) / 2
