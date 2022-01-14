@@ -24,6 +24,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
 
     This main function will follow the steps as discussed in the paper Figure 1:
 
+    0) Not mentioned in the figure, but FastTree first makes sure all sequences are unique (see Unique Sequences)
     1) Create alignment Total Profile T ( Done inside Tree Object )
     2) Initialize Top-Hits (and FastNJ heuristic)
     3) Initial Topology
@@ -38,10 +39,12 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     Returns:
         (str): A phylogenetic tree in Newick format.
     """
+    sequences, identical_sequences = uniquify_sequences(sequences)
+
     # Create list of Nodes representing the sequences
     nodes = []
     for ii, seq in enumerate(sequences.keys()):
-        node = Node(seq, ii, sequences[seq])
+        node = Node(seq, ii, sequences[seq], identical_sequences[ii])
         node.leaf = True
         nodes.append(node)
 
@@ -84,6 +87,41 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
 
     # Final step: print tree topology as Newick string
     return ft.newick_str()
+
+
+def uniquify_sequences(sequences: dict) -> tuple:
+    """Make sure sequences are unique, and dupes are made into multifurcating nodes.
+
+    Large alignments often contain many sequences that are exactly identical to each other [18]. FastTree uses
+    hashing to quickly identify redundant sequences, constructs a tree for the unique subset of sequences,
+    and then creates multifurcating nodes, without support values, as parents of the redundant sequences
+
+    Args:
+        sequences (dict) : The mapping of sequences names to their sequences from the input file.
+
+    Returns
+        unique_sequences, number_of_duplicates (dict, list)
+    """
+    unique_sequences = set()
+    duplicate_counter = {}
+
+    for i, seq in enumerate(sequences.values()):
+        if seq not in unique_sequences:
+            unique_sequences.add(seq)
+            duplicate_counter[seq] = (list(sequences.keys())[i], 1)
+        else:
+            duplicate_counter[seq] = (duplicate_counter[seq][0], duplicate_counter[seq][1] + 1)
+
+    # Now that we have knowledge of duplicates, uniquify the sequences
+    duplicates_per_node = []
+    sequences = {}
+    for key, value in duplicate_counter.items():
+        name, duplicates = value
+        sequences[name] = key
+        duplicates_per_node.append(duplicates)
+
+    return sequences, duplicates_per_node
+
 
 
 def average_profile(nodes: list, lambda1: float) -> list:
@@ -236,7 +274,7 @@ def create_join(ft: Tree, best_join) -> None:
     """
     # Save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
     # we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
-    new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), len(ft.nodes), 'nosequence')
+    new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), len(ft.nodes), 'nosequence', 1)
     new_node.profile = average_profile([best_join[0], best_join[1]], ft.lambda1)
 
     # add indices of left child, right child

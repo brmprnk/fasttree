@@ -1,6 +1,6 @@
 class Node:
 
-    def __init__(self, name, index, sequence):
+    def __init__(self, name, index, sequence, identical_sequences):
         self.name = name
         self.sequence = sequence
         self.branchlength = 0
@@ -10,6 +10,7 @@ class Node:
         self.active = True
         self.leaf = False
         self.index = index
+        self.identical_sequences = identical_sequences  # Default is 1
 
         # Top-hits is uninitialized
         self.tophits = None
