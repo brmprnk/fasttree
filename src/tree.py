@@ -193,13 +193,14 @@ class Tree:
         # Given these variances, BIONJ weights the join of i, j so as to minimize the variance of the distance estimates for the new node ij, using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
         # FT computes the numerator with (n − 2)(ν(i) − ν(j)) + (j, k) − (i, k) see outdistance for calculation of sums using T
         sumV = (N_active - 2) * (self.variance_correcion([join[1]]) - self.variance_correcion([join[0]])) + N_active * util.profile_distance([join[0].profile, self.T]) - N_active * util.profile_distance([join[1].profile, self.T])
-        # print('sumV', sumV)
-        # print('deelstreep', (2 * (N_active - 2) * V_ij))
-        # print('V_ij', V_ij)
-        new_lambda = abs(0.5 + (sumV) / (2 * (N_active - 2) * V_ij))
-        # print('new', abs(new_lambda))
-        if new_lambda > 0.999:
-            new_lambda = 0.5
+        new_lambda = 0.5 + (sumV) / (2 * (N_active - 2) * V_ij)
+        
+        # check if lambda is within boundaries [0,1]
+        if new_lambda > 1:
+            new_lambda = 1
+        if new_lambda < 0:
+            new_lambda = 0
+
         #update lambda
         self.lambda1 = new_lambda
 
