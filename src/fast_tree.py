@@ -52,6 +52,10 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     ft = Tree(nodes, args)
 
     if ft.verbose == 1:
+        print("The names of the {} sequences entered into the program : ".format(len(sequences.items())))
+        for key, value in sequences.items():
+            print(key)
+    if ft.verbose == 2:
         print("The sequences entered into the program : ")
         for key, value in sequences.items():
             print(key, ':', value)
@@ -105,12 +109,13 @@ def uniquify_sequences(sequences: dict) -> tuple:
     unique_sequences = set()
     duplicate_counter = {}
 
-    for i, seq in enumerate(sequences.values()):
+    for name, seq in sequences.items():
         if seq not in unique_sequences:
             unique_sequences.add(seq)
-            duplicate_counter[seq] = (list(sequences.keys())[i], 1)
+            duplicate_counter[seq] = (name, [name])
         else:
-            duplicate_counter[seq] = (duplicate_counter[seq][0], duplicate_counter[seq][1] + 1)
+            # Add the name of the duplicate
+            duplicate_counter[seq][1].append(name)
 
     # Now that we have knowledge of duplicates, uniquify the sequences
     duplicates_per_node = []
@@ -318,6 +323,7 @@ def create_join(ft: Tree, best_join) -> None:
 
     # Update the best-hit according to FastNJ
     heuristics.fastNJ_update(ft, new_node)
+
 
 def CreateInitialTopology(ft: Tree) -> None:
     """

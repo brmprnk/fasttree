@@ -10,7 +10,7 @@ class Node:
         self.active = True
         self.leaf = False
         self.index = index
-        self.identical_sequences = identical_sequences  # Default is 1
+        self.identical_sequences = identical_sequences  # Default is [self.name]
 
         # Top-hits is uninitialized
         self.tophits = None
