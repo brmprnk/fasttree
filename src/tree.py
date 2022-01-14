@@ -76,7 +76,14 @@ class Tree:
                 replace = newick_list.index(
                     ii)  # Find where this node was located in the newick list, this entry should be replaced with the index of the children or name of the node
                 if self.nodes[ii].leaf:  # skip leaf nodes
-                    newick_list[replace] = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength,3))  # Replace node index by it's name (this is a leaf node), and corresponding branch length
+                    if self.nodes[ii].identical_sequences == 1:  # if only one copy of this sequence was in the alignment
+                        newick_list[replace] = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength,3))  # Replace node index by it's name (this is a leaf node), and corresponding branch length
+                    else:
+                        nn = self.nodes[ii].identical_sequences
+                        node_replicate = str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength, 3))
+                        for ii in range(nn-1):
+                            node_replicate = node_replicate + "," + str(self.nodes[ii].name) + ":" + str(round(self.nodes[ii].branchlength, 3))
+                        newick_list[replace] = node_replicate
                 else:  # If not a leaf node,
                     newick_list[replace:replace + 1] = ('(', self.nodes[ii].leftchild, ',', self.nodes[ii].rightchild,
                                                         ')')  # Replace node index by the index of it's children
