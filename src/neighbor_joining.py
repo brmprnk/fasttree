@@ -9,6 +9,7 @@ from src.tree import Tree
 from src.node import Node
 import src.util as util
 
+
 def minimize_nj_criterion(ft: Tree) -> Tuple[tuple, Node]:
     """Returns i,j for which d(i, j) - r(i) -r(j) is minimal and corresponding new node of merging i,j
 
@@ -32,7 +33,6 @@ def minimize_nj_criterion(ft: Tree) -> Tuple[tuple, Node]:
 
             ft.update_T()
             criterion = nj_criterion(ft, i, j)
-            print("criterion ", i.index, j.index, criterion)
 
             if criterion < min_dist:  # if best join for now
                 min_dist = criterion
