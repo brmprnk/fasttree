@@ -60,7 +60,10 @@ class Tree:
             The index of leaf nodes (= has no children) will be replaced by the name of the leaf node.
             This results in a list with all the names of the nodes with the right hierarchy of brackets.
             These can be joined together to form the Newick string.
-            Duplicate sequences are taken into consideration by adding
+
+            Duplicate sequences are taken into consideration by allowing a node to have more than two children,
+            as described in Price et. al. [1]: "It constructs a tree for the unique subset of sequences and then creates
+            multifurcating nodes, without support values, as parents of the redundant sequences."
 
         Returns:
             Newick string (str): the desired format of the tree structure (newick string)
