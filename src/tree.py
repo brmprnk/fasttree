@@ -103,53 +103,109 @@ class Tree:
         return newick_str
 
     def BranchLength(self):
-        """Compute Branch lengths for each node
+        """Compute Branch lengths for each leaf node
 
         Args:
-            ft (Tree) : The Tree object
-            minimized_join (list): containing the just joined nodes
+            self : The Tree object
+            
         """
-        nr_leafs = len(self.nodes)
+        for n1 in self.nodes: 
+            if n1.leaf == True:        
+                d = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n1.parent]]) # uncorrected distance between node and parent
+                self.nodes[n1.index].branchlength = util.JC_distance(d) # append branchlength to node
 
-        for n1 in self.nodes:
-            for n2 in self.nodes:
-                if n1 == n2: #if nodes are the same
-                    continue
-                elif n1.leaf == False and n2.leaf == False: #if internal node
-                    continue
-                else:
-                    # n1 = minimized_join[0].index
-                    # n2 = minimized_join[1].index
-                    # connect single leaf with other single leaf
-                    if n1.leaf == True and n2.leaf == True:
-                        fraction = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.index]])
-                        self.nodes[n1.index].branchlength = util.JC_distance(fraction)
-                        self.nodes[n2.index].branchlength = util.JC_distance(fraction)
-                    # connect single leaf with other branch
-                    elif n1.leaf == True:
-                        d12 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.leftchild]])
-                        d13 = util.uncorrected_distance(self, [self.nodes[n1.index], self.nodes[n2.rightchild]])
-                        d23 = util.uncorrected_distance(self, [self.nodes[n2.leftchild], self.nodes[n2.rightchild]])
-                        self.nodes[n1.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-                        self.nodes[n2.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-                    # connect single leaf with other branch
-                    elif n2.leaf == True:
-                        d12 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.leftchild]])
-                        d13 = util.uncorrected_distance(self, [self.nodes[n2.index], self.nodes[n1.rightchild]])
-                        d23 = util.uncorrected_distance(self, [self.nodes[n1.leftchild], self.nodes[n1.rightchild]])
-                        self.nodes[n1.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-                        self.nodes[n2.index].branchlength = (util.JC_distance(d12) + util.JC_distance(d13) - util.JC_distance(d23)) / 2
-                    # connect two branches
-                    # else:
-                    #     d13 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].leftchild]])
-                    #     d14 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n2].rightchild]])
-                    #     d23 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].leftchild]])
-                    #     d24 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].rightchild], self.nodes[self.nodes[n2].rightchild]])
-                    #     d12 = util.uncorrected_distance(self, [self.nodes[self.nodes[n1].leftchild], self.nodes[self.nodes[n1].rightchild]])
-                    #     d34 = util.uncorrected_distance(self, [self.nodes[self.nodes[n2].leftchild], self.nodes[self.nodes[n2].rightchild]])
-                    #     self.nodes[n1].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
-                    #         d24)) / 4 - (
-                    #                                         util.JC_distance(d12) + util.JC_distance(d34)) / 2
-                    #     self.nodes[n2].branchlength = (util.JC_distance(d13) + util.JC_distance(d14) + util.JC_distance(d23) + util.JC_distance(
-                    #         d24)) / 4 - (
-                    #                                         util.JC_distance(d12) + util.JC_distance(d34)) / 2
+    def variance_correcion(self, ij):
+        ''' calculate variance correction with formula's:
+                v(ij) ≡ ∆(i, j)/2
+                v(k) has kids so look at leftchild and rightchild so becomes v(k_leftchild, k_rightchild)
+                v(k) = o for leaves
+
+        Args:
+            tree object
+            list with nodes for which the variance correction should be calculated (could have a length of 1 or 2 depending on v(ij) or v(k))
+        returns:
+            variance correction v(ij) or v(k)
+        '''
+        if len(ij) > 1:
+            return util.profile_distance([ij[0].profile, ij[1].profile])
+        elif ij[0].leaf:
+            return 0
+        else:
+            return util.profile_distance(
+                [self.nodes[ij[0].rightchild].profile, self.nodes[ij[0].leftchild].profile])
+
+
+    def variance(self, join: list):
+        """Variance between nodes is given by V (i, j) = ∆(i, j) − ν(i) − ν(j)
+
+        args:
+            tree object
+            list containing nodes which are joined
+
+        returns:
+            Variance V_ij
+        """
+
+        if len(join) == 2:
+            # indices = [join[0].index, join[1].index]
+            V_ij = util.profile_distance([join[0].profile, join[1].profile])
+            return V_ij
+
+        if len(join) == 3:
+            indice = [join[0].index, join[1].index, join[2].index]
+            del_ij = util.profile_distance_nodes(self, indice)
+            u_i = self.variance_correcion([join[0], join[1]])
+            u_j = self.variance_correcion([join[2]])
+            V_ij = del_ij - u_i - u_j
+            return V_ij      
+
+
+    def update_lambda(self, join: list):
+        ''' calculate a new lambda value to minimize the variance of the distance estimates for the new node ij,
+            using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
+
+        Args:
+            tree object
+            list with nodes which are just joined
+
+        '''
+        #Check if joined nodes have children
+        i = join[0]
+        j = join[1]
+        if i.leaf and j.leaf:
+            join = [i, j]
+        elif i.leaf:
+            join = [self.nodes[j.leftchild], self.nodes[j.rightchild], i]
+        elif j.leaf:
+            join = [self.nodes[i.leftchild], self.nodes[i.rightchild], j]
+        else:
+            join = [self.nodes[i.leftchild], self.nodes[i.rightchild], j]
+
+        #calculate variance of nodes including internal nodes (children)
+        V_ij = self.variance(join)
+
+        #count number of active nodes
+        N_active = 1
+        for j in self.nodes:
+            if j.name == join[0] or j.name == join[1]:
+                continue
+            if not j.active:
+                continue
+            N_active += 1
+
+        # Given these variances, BIONJ weights the join of i, j so as to minimize the variance of the distance estimates for the new node ij, using the formula λ =1/2 + SUM(V (j, k) − V (i, k))/(2(n − 2)V (i, j))
+        # FT computes the numerator with (n − 2)(ν(i) − ν(j)) + (j, k) − (i, k) see outdistance for calculation of sums using T
+        sumV = (N_active - 2) * (self.variance_correcion([join[1]]) - self.variance_correcion([join[0]])) + N_active * util.profile_distance([join[0].profile, self.T]) - N_active * util.profile_distance([join[1].profile, self.T])
+        new_lambda = 0.5 + (sumV) / (2 * (N_active - 2) * V_ij)
+        
+        # check if lambda is within boundaries [0,1]
+        if new_lambda > 1:
+            new_lambda = 1
+        if new_lambda < 0:
+            new_lambda = 0
+
+        #update lambda
+        self.lambda1 = new_lambda
+
+
+    

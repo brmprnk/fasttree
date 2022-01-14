@@ -359,6 +359,13 @@ def fastNJ_update(ft: Tree, node: Node):
 
         node.best_join = (best_join_dist, best_join)
 
+        # But if a node has no top-hits, this means we have reached the end of the program!
+        if len(ft.nodes[best_join].tophits.list) == 0:
+            if ft.verbose == 1:
+                print("Newly created node ", best_join, " has no top-hits. This means this was the last join!")
+                print()
+
+            return
         best_B_dist, best_B = ft.nodes[best_join].tophits.list[0]
 
         # A, B is a better join than B, Best(B)
