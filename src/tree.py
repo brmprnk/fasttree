@@ -197,7 +197,7 @@ class Tree:
         # print('deelstreep', (2 * (N_active - 2) * V_ij))
         # print('V_ij', V_ij)
         new_lambda = abs(0.5 + (sumV) / (2 * (N_active - 2) * V_ij))
-        print('new', abs(new_lambda))
+        # print('new', abs(new_lambda))
         if new_lambda > 0.999:
             new_lambda = 0.5
         #update lambda
