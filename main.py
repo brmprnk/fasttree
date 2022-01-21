@@ -1,7 +1,7 @@
 """
 
 Based on the FastTree algorithm as introduced by Price et al. [1]
-[1] Price at al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
+[1] Price et al. FastTree: Computing Large Minimum Evolution Trees with Profiles instead of a Distance Matrix.
     Molecular Biology and Evolution, vol 26 (7). 2009.
 
 
