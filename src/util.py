@@ -6,14 +6,14 @@ import math
 from src.node import Node
 
 
-def uncorrected_distance(ft, join: list):
+def uncorrected_distance(ft, join: list) -> float:
     """Uncorrected distance between joined nodes (node_ij) and other nodes (node_k)
     du(ij, k) = ∆(ij, k) − u(ij) − u(k)
     args;
         list with input nodes
         indices of nodes which are joined
     returns:
-        uncorrected Distance
+        (float) uncorrected Distance
     """
     if len(join) == 2:
         indices = [join[0].index, join[1].index]
@@ -36,7 +36,7 @@ def profile_distance(profiles: list) -> float:
         list of profiles of which you want to calculate profile distance (i,j)
 
     returns:
-        profile distance ∆(i, j)
+        (float) profile distance ∆(i, j)
     """
     value = 0
     for L in range(len(profiles[0])):
@@ -72,7 +72,7 @@ def profile_distance_nodes(ft, indices: list) -> float:
     return profile_dist
 
 
-def updistance(nodes: list, ijk: list):
+def updistance(nodes: list, ijk: list) -> float:
     ''' calculate updistance with formula's:
             u(ij) ≡ ∆(i, j)/2
             u(k) has kids so look at leftchild and rightchild so becomes u(k_leftchild, k_rightchild)
@@ -82,7 +82,7 @@ def updistance(nodes: list, ijk: list):
         list with all nodes
         list with nodes for which the updistance should be calculated (could have a length of 1 or 2 depending on u(ij) or u(k))
     returns:
-        updistance u(ij) or u(k)
+        (float) updistance u(ij) or u(k)
     '''
     if len(ijk) > 1:
         return profile_distance([nodes[ijk[0]].profile, nodes[ijk[1]].profile]) / 2
@@ -100,7 +100,7 @@ def out_distance(ft, i: Node) -> float:
     Args:
         active nodes; list of nodes; T total profile of current topology
     returns:
-        out distance of one node
+        (float) out distance of one node
     """
 
     N_active_nodes = 1  # i is always an active node; is

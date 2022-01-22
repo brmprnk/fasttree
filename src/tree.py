@@ -184,12 +184,11 @@ class Tree:
         returns:
             Variance V_ij
         """
-
+        # if leafs
         if len(join) == 2:
-            # indices = [join[0].index, join[1].index]
             V_ij = util.profile_distance([join[0].profile, join[1].profile])
             return V_ij
-
+        # if internal node
         if len(join) == 3:
             indice = [join[0].index, join[1].index, join[2].index]
             del_ij = util.profile_distance_nodes(self, indice)

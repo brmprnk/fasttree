@@ -39,6 +39,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     Returns:
         (str): A phylogenetic tree in Newick format.
     """
+    # Actual first step : Unique sequences ( page 1646)
     sequences, identical_sequences = uniquify_sequences(sequences)
 
     # Create list of Nodes representing the sequences
@@ -60,9 +61,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
         for key, value in sequences.items():
             print(key, ':', value)
 
-    # Actual first step : Unique sequences ( page 1646, do later )
-
-    # Heuristics for neighbor joining (with or without top-hits)
+    # Heuristics for neighbor joining (with top-hits)
 
     # Top hits sequence
     if not ft.no_top_hits:
@@ -162,11 +161,10 @@ def create_join(ft: Tree, best_join) -> None:
     Returns:
         None
     """
-    # calculate BIONJ weights of join  with the number of active nodes before the join takes place
+    # calculate BIONJ weights of join with the number of active nodes before the join takes place
     ft.update_lambda(best_join)
     
     # Save just calculated profile of joining nodes to a Node with name containing both joined nodes and make this new node active
-    # we should probably change the class Node as the sequence is not known for the merged nodes. I just made a beun oplossing. Don't know if it's good enough
     new_node = Node(str(best_join[0].name) + '&' + str(best_join[1].name), len(ft.nodes), 'nosequence', 1)
     new_node.profile = average_profile([best_join[0], best_join[1]], ft.lambda1)
 

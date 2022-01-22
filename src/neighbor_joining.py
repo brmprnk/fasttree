@@ -34,7 +34,7 @@ def minimize_nj_criterion(ft: Tree) -> Tuple[tuple, Node]:
             ft.update_T()
             criterion = nj_criterion(ft, i, j)
 
-            if criterion < min_dist:  # if best join for now
+            if criterion < min_dist:  # if best join up until now
                 min_dist = criterion
                 best_join = (i, j)  # saves best joining nodes
 

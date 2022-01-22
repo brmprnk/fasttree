@@ -21,7 +21,7 @@ class Node:
         if sequence != 'nosequence':
             self.profile = self.create_profile(sequence)
 
-    def create_profile(self, sequence):
+    def create_profile(self, sequence): # generates profile of input sequences
         profile = []
         nt_values = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
 
@@ -31,7 +31,7 @@ class Node:
             profile.append(column)
         return profile
 
-    def set_inactive(self):
+    def set_inactive(self): # inactivates nodes 
         self.active = False
 
     def __str__(self):
