@@ -21,7 +21,15 @@ class Node:
         if sequence != 'nosequence':
             self.profile = self.create_profile(sequence)
 
-    def create_profile(self, sequence): # generates profile of input sequences
+    def create_profile(self, sequence: str) -> list: 
+        """ Create a profile of an input sequence
+
+        Args:
+            sequence (str) : sequence of leaf node
+
+        Returns:
+            profile (list) : profile matrix of leaf node
+        """
         profile = []
         nt_values = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
 
