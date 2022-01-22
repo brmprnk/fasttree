@@ -9,6 +9,7 @@ References to page numbers in this code are referring to the paper:
 import math
 import sys
 from queue import PriorityQueue
+import time
 
 import argparse
 
@@ -64,8 +65,7 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     # Heuristics for neighbor joining (with top-hits)
 
     # Top hits sequence
-    if not ft.no_top_hits:
-        heuristics.TopHits.top_hits_init(ft)
+    heuristics.TopHits.top_hits_init(ft)
 
     # Initialize FastNJ Best-hit heuristic
     heuristics.fastNJ_init(ft)
@@ -84,11 +84,18 @@ def fast_tree(args: argparse.Namespace, sequences: dict) -> str:
     if ft.verbose == 1:
         print("NNI is finished")
 
-    # Calculate branchlengths
+    # Calculate branch lengths
     ft.BranchLength()
     
     # Final step: print tree topology as Newick string
-    return ft.newick_str()
+    newick = ft.newick_str()
+
+    # Output total runtime in seconds
+    end = time.time()
+    total_time = end - args.start
+    print("Total runtime : ", total_time)
+
+    return newick
 
 
 def uniquify_sequences(sequences: dict) -> tuple:
@@ -195,17 +202,16 @@ def create_join(ft: Tree, best_join) -> None:
     # another O(N 2La/200) work.)
     ft.update_T()
 
-    # Update Top-Hits heuristic if applicable
-    if not ft.no_top_hits:
-        new_node.tophits = heuristics.TopHits(ft.m)
-        new_node.tophits.tophits_new_node(ft, new_node)
+    # Update Top-Hits heuristic
+    new_node.tophits = heuristics.TopHits(ft.m)
+    new_node.tophits.tophits_new_node(ft, new_node)
 
-        # No more top-hits means all nodes have been joined!
-        if len(new_node.tophits.list) == 0:
-            if ft.verbose == 1:
-                print("Newly created node ", new_node.index, " has no top-hits. This means this was the last join!")
-                print()
-            return
+    # No more top-hits means all nodes have been joined!
+    if len(new_node.tophits.list) == 0:
+        if ft.verbose == 1:
+            print("Newly created node ", new_node.index, " has no top-hits. This means this was the last join!")
+            print()
+        return
 
     # Update the best-hit according to FastNJ
     heuristics.fastNJ_update(ft, new_node)
@@ -231,66 +237,61 @@ def CreateInitialTopology(ft: Tree) -> None:
 
             print("Active nodes remaining in initial topology creation : ", active_nodes)
 
-        if ft.no_top_hits:
-            # TODO: Implement FastNJ and local hill-climbing for non-top-hits usage
-            minimized_join = neighbor_joining.minimize_nj_criterion(ft)
-            create_join(ft, minimized_join)
 
-        else:
-            # With top hits, we can use We use the FastNJ and local hill-climbing heuristics,
-            # with the further restriction that we consider only the top m candidates at each step
+        # With top hits, we can use We use the FastNJ and local hill-climbing heuristics,
+        # with the further restriction that we consider only the top m candidates at each step
 
-            # First find the best m joins among the best-hit entries for the n active nodes
-            # FastTree simply sorts all n entries, but the paper suggests a speed-up using a PriorityQueue!
-            best_m_joins = PriorityQueue()
-            for node in ft.nodes:
-                if not node.active:
-                    continue
+        # First find the best m joins among the best-hit entries for the n active nodes
+        # FastTree simply sorts all n entries, but the paper suggests a speed-up using a PriorityQueue!
+        best_m_joins = PriorityQueue()
+        for node in ft.nodes:
+            if not node.active:
+                continue
 
-                # Fix FastNJ references to inactive notes the "lazy" way
-                if not ft.nodes[node.best_join[1]].active:
-                    # No more top-hits means the heuristic has served its purpose
-                    if len(node.tophits.list) == 0:
-                        minimized_join = neighbor_joining.minimize_nj_criterion(ft)
-                        create_join(ft, minimized_join)
-                        break
+            # Fix FastNJ references to inactive notes the "lazy" way
+            if not ft.nodes[node.best_join[1]].active:
+                # No more top-hits means the heuristic has served its purpose
+                if len(node.tophits.list) == 0:
+                    minimized_join = neighbor_joining.minimize_nj_criterion(ft)
+                    create_join(ft, minimized_join)
+                    break
 
-                    heuristics.fastNJ_update(ft, node)
+                heuristics.fastNJ_update(ft, node)
 
-                # Put in the best join pair (node, best_join)
-                best_m_joins.put((node.best_join[0], (node.index, node.best_join[1])))
+            # Put in the best join pair (node, best_join)
+            best_m_joins.put((node.best_join[0], (node.index, node.best_join[1])))
 
-            # Then, we compute the current value of the neighbor-joining criterion for those m candidates,
-            # which takes O(mLa) time
-            best_candidate = (0, 0)  # (distance, node index)]
-            min_dist = sys.maxsize / 2
-            for _ in range(ft.m):
-                if best_m_joins.empty():
-                    if best_candidate == (0, 0):  # The candidate did not change, so we have reached the end
-                        return
-                    else:
-                        break
+        # Then, we compute the current value of the neighbor-joining criterion for those m candidates,
+        # which takes O(mLa) time
+        best_candidate = (0, 0)  # (distance, node index)]
+        min_dist = sys.maxsize / 2
+        for _ in range(ft.m):
+            if best_m_joins.empty():
+                if best_candidate == (0, 0):  # The candidate did not change, so we have reached the end
+                    return
+                else:
+                    break
 
-                candidate = best_m_joins.get()[1]
+            candidate = best_m_joins.get()[1]
 
-                i = ft.nodes[candidate[0]]
-                j = ft.nodes[candidate[1]]
+            i = ft.nodes[candidate[0]]
+            j = ft.nodes[candidate[1]]
 
-                criterion = neighbor_joining.nj_criterion(ft, i, j)
+            criterion = neighbor_joining.nj_criterion(ft, i, j)
 
-                if criterion < min_dist:  # if best join for now
-                    best_candidate = candidate
-                    min_dist = criterion
+            if criterion < min_dist:  # if best join for now
+                best_candidate = candidate
+                min_dist = criterion
 
-            # Given this candidate join, we do a local hill-climbing search for a better join
-            best_join = heuristics.local_hill_climb(ft, best_candidate, min_dist)
+        # Given this candidate join, we do a local hill-climbing search for a better join
+        best_join = heuristics.local_hill_climb(ft, best_candidate, min_dist)
 
-            if ft.verbose == 1:
-                print("Best Join after heuristics is nodes ", best_join[0].index, best_join[1].index)
-                print()
+        if ft.verbose == 1:
+            print("Best Join after heuristics is nodes ", best_join[0].index, best_join[1].index)
+            print()
 
-            # Make the join
-            create_join(ft, best_join)
+        # Make the join
+        create_join(ft, best_join)
 
 
 def NNI(ft: Tree):

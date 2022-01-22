@@ -21,7 +21,6 @@ class Tree:
         self.T = self.update_T()
 
         # And set variables dictated by user input flags
-        self.no_top_hits = args.no_top_hits
         self.verbose = args.verbose
 
     def update_T(self) -> list:
