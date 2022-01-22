@@ -13,6 +13,7 @@ Authors:
 import sys
 import os
 import argparse
+import time
 
 from src.fast_tree import fast_tree
 
@@ -32,10 +33,6 @@ PARSER.add_argument('--file', '-f',
 PARSER.add_argument('--experiment', '-e',
                     help="Name of experiment",
                     default="experiment")
-PARSER.add_argument('-no-top-hits', '-th',
-                    action='store_true',
-                    help="Turns off the top-hits heuristic. Use to compare speed up w/ heuristic",
-                    default=False)
 PARSER.add_argument('--verbose', '-v',
                     type=int,
                     help='Set verbose to 1 if you want to print information to the output console during execution',
@@ -59,6 +56,10 @@ def main() -> None:
 
     # Fetch sequences from input file
     sequences = readinput(args.aln_file)
+
+    # Output total runtime of the project
+    start = time.time()
+    args.start = start
 
     # Run FastTree
     fast_tree(args, sequences)

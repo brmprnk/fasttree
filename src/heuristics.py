@@ -277,39 +277,23 @@ def fastNJ_init(ft: Tree) -> None:
     Args:
         ft (Tree): Tree object
     """
-    if ft.no_top_hits:
-        for i in ft.nodes:
-            best_join = (sys.maxsize / 2, 0)  # (distance, node index)
-            for j in ft.nodes:
-                if i.index == j.index:
-                    continue
+    for node in ft.nodes:
+        # Nice, the best join for each node is found in their top-hits list already!
+        # But wait, while computing the top hits of A, we may discover that A,B is a better join than B,best(B).
 
-                criterion = neighbor_joining.nj_criterion(ft, i, j)
+        # So if the best_join was already set when A,B is a better join than B,best(B) was true, move on to the next
+        if node.best_join is not None:
+            continue
 
-                if criterion < best_join[0]:  # if best join for now
-                    best_join = (criterion, j.index)
+        # Okay after that check, we can use tophits
+        best_join_dist, best_join = node.tophits.list[0]
+        node.best_join = (best_join_dist, best_join)
 
-            # Found the best join for i, now update it
-            i.best_join = best_join
+        best_B_dist, best_B = ft.nodes[best_join].tophits.list[0]
 
-    else:
-        for node in ft.nodes:
-            # Nice, the best join for each node is found in their top-hits list already!
-            # But wait, while computing the top hits of A, we may discover that A,B is a better join than B,best(B).
-
-            # So if the best_join was already set when A,B is a better join than B,best(B) was true, move on to the next
-            if node.best_join is not None:
-                continue
-
-            # Okay after that check, we can use tophits
-            best_join_dist, best_join = node.tophits.list[0]
-            node.best_join = (best_join_dist, best_join)
-
-            best_B_dist, best_B = ft.nodes[best_join].tophits.list[0]
-
-            # A, B is a better join than B, Best(B)
-            if best_B_dist > best_join_dist:
-                ft.nodes[best_join].best_join = (best_join_dist, node.index)
+        # A, B is a better join than B, Best(B)
+        if best_B_dist > best_join_dist:
+            ft.nodes[best_join].best_join = (best_join_dist, node.index)
 
     if ft.verbose == 1:
         for node in ft.nodes:
@@ -332,45 +316,29 @@ def fastNJ_update(ft: Tree, node: Node):
         print('Old FastNJ best join for Node ', node.index, 'is', node.best_join)
         print()
 
-    if ft.no_top_hits:
-        best_join = (sys.maxsize / 2, 0)  # (distance, node index)
-        for i in ft.nodes:
+    # Nice, the best join for each node is found in their top-hits list already!
+    best_join_dist, best_join = node.tophits.list[0]
 
-            if i.index == node.index:
-                continue
+    # Refresh top-hits lists the "lazy" way, after coming across an inactive node
+    if not ft.nodes[best_join].active:
+        # Update with reference to active parent
+        best_join = ft.nodes[best_join].parent
+        best_join_dist = neighbor_joining.nj_criterion(ft, node, ft.nodes[best_join])
 
-            criterion = neighbor_joining.nj_criterion(ft, node, i)
+    node.best_join = (best_join_dist, best_join)
 
-            if criterion < best_join[0]:  # if best join for now
-                best_join = (criterion, node.index)
+    # But if a node has no top-hits, this means we have reached the end of the program!
+    if len(ft.nodes[best_join].tophits.list) == 0:
+        if ft.verbose == 1:
+            print("Newly created node ", best_join, " has no top-hits. This means this was the last join!")
+            print()
 
-        # Found the best join for i, now update it
-        node.best_join = best_join
+        return
+    best_B_dist, best_B = ft.nodes[best_join].tophits.list[0]
 
-    else:
-        # Nice, the best join for each node is found in their top-hits list already!
-        best_join_dist, best_join = node.tophits.list[0]
-
-        # Refresh top-hits lists the "lazy" way, after coming across an inactive node
-        if not ft.nodes[best_join].active:
-            # Update with reference to active parent
-            best_join = ft.nodes[best_join].parent
-            best_join_dist = neighbor_joining.nj_criterion(ft, node, ft.nodes[best_join])
-
-        node.best_join = (best_join_dist, best_join)
-
-        # But if a node has no top-hits, this means we have reached the end of the program!
-        if len(ft.nodes[best_join].tophits.list) == 0:
-            if ft.verbose == 1:
-                print("Newly created node ", best_join, " has no top-hits. This means this was the last join!")
-                print()
-
-            return
-        best_B_dist, best_B = ft.nodes[best_join].tophits.list[0]
-
-        # A, B is a better join than B, Best(B)
-        if best_B_dist > best_join_dist:
-            ft.nodes[best_join].best_join = (best_join_dist, node.index)
+    # A, B is a better join than B, Best(B)
+    if best_B_dist > best_join_dist:
+        ft.nodes[best_join].best_join = (best_join_dist, node.index)
 
     if ft.verbose == 1:
         print('FastNJ best join for Node ', node.index, 'is', node.best_join)
@@ -391,40 +359,37 @@ def local_hill_climb(ft: Tree, best_candidate: tuple, best_dist: float) -> tuple
     Using the top-hits heuristic, we only search within the top-hit lists rather than
     comparing the two nodes to all other active nodes.
     """
-    if ft.no_top_hits:
-        # TODO Implement
-        A = ft.nodes[best_candidate[0]]
-    else:
-        for hit_idx, hit in enumerate(ft.nodes[best_candidate[0]].tophits.list):
 
-            # Lazy: when it encounters a hit to a joined node, it replaces that with a hit to the active ancestor
-            if not ft.nodes[hit[1]].active:
-                # Update with reference to active parent
-                best_join = ft.nodes[hit[1]].parent
-                best_join_dist = neighbor_joining.nj_criterion(ft, ft.nodes[best_candidate[0]], ft.nodes[best_join])
-                ft.nodes[best_candidate[0]].tophits.list[hit_idx] = (best_join_dist, best_join)
+    for hit_idx, hit in enumerate(ft.nodes[best_candidate[0]].tophits.list):
 
-                # Update the hit we encountered with the updated version
-                hit = ft.nodes[best_candidate[0]].tophits.list[hit_idx]
+        # Lazy: when it encounters a hit to a joined node, it replaces that with a hit to the active ancestor
+        if not ft.nodes[hit[1]].active:
+            # Update with reference to active parent
+            best_join = ft.nodes[hit[1]].parent
+            best_join_dist = neighbor_joining.nj_criterion(ft, ft.nodes[best_candidate[0]], ft.nodes[best_join])
+            ft.nodes[best_candidate[0]].tophits.list[hit_idx] = (best_join_dist, best_join)
 
-            if hit[0] < best_dist:
-                best_candidate = (best_candidate[0], hit[1])
-                best_dist = hit[0]
+            # Update the hit we encountered with the updated version
+            hit = ft.nodes[best_candidate[0]].tophits.list[hit_idx]
 
-        for hit_idx, hit in enumerate(ft.nodes[best_candidate[1]].tophits.list):
+        if hit[0] < best_dist:
+            best_candidate = (best_candidate[0], hit[1])
+            best_dist = hit[0]
 
-            # Lazy: when it encounters a hit to a joined node, it replaces that with a hit to the active ancestor
-            if not ft.nodes[hit[1]].active:
-                # Update with reference to active parent
-                best_join = ft.nodes[hit[1]].parent
-                best_join_dist = neighbor_joining.nj_criterion(ft, ft.nodes[best_candidate[1]], ft.nodes[best_join])
-                ft.nodes[best_candidate[1]].tophits.list[hit_idx] = (best_join_dist, best_join)
+    for hit_idx, hit in enumerate(ft.nodes[best_candidate[1]].tophits.list):
 
-                # Update the hit we encountered with the updated version
-                hit = ft.nodes[best_candidate[1]].tophits.list[hit_idx]
+        # Lazy: when it encounters a hit to a joined node, it replaces that with a hit to the active ancestor
+        if not ft.nodes[hit[1]].active:
+            # Update with reference to active parent
+            best_join = ft.nodes[hit[1]].parent
+            best_join_dist = neighbor_joining.nj_criterion(ft, ft.nodes[best_candidate[1]], ft.nodes[best_join])
+            ft.nodes[best_candidate[1]].tophits.list[hit_idx] = (best_join_dist, best_join)
 
-            if hit[0] < best_dist:
-                best_candidate = (hit[1], best_candidate[1])
-                best_dist = hit[0]
+            # Update the hit we encountered with the updated version
+            hit = ft.nodes[best_candidate[1]].tophits.list[hit_idx]
 
-        return ft.nodes[best_candidate[0]], ft.nodes[best_candidate[1]]
+        if hit[0] < best_dist:
+            best_candidate = (hit[1], best_candidate[1])
+            best_dist = hit[0]
+
+    return ft.nodes[best_candidate[0]], ft.nodes[best_candidate[1]]
